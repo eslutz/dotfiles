@@ -42,9 +42,6 @@ alias refresh_zsh="source ~/.zshrc"
 alias tree="find . -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'"
 # NPM major version update
 alias npmupdatemajor="npx npm-check-updates -u"
-# MongoDB
-alias startMongo="brew services start mongodb-community"
-alias stopMongo="brew services stop mongodb-community"
 
 # >>> CUSOMIZED PROMPT W/ GIT INFO >>>
 autoload -Uz vcs_info
@@ -55,3 +52,6 @@ PROMPT='%n@%m %1~${vcs_info_msg_0_} > '
 
 # >>> GH COPILOT CLI >>>
 eval "$(gh copilot alias -- zsh)"
+
+export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+export PATH="/opt/homebrew/bin:$PATH"
