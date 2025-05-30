@@ -17,21 +17,8 @@ info() {
   printf "%b\\n" "${bold}${green}[INFO]${normal} $1"
 }
 
-warn(  # Move to Applications folder
-  info "Installing Visual Studio Code to Applications folder..."
-  if ! mv "Visual Studio Code.app" "/Applications/"; then
-    error "Failed to move Visual Studio Code to Applications folder"
-    read -p "Try with sudo? [Y/n] " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-      if ! sudo mv "Visual Studio Code.app" "/Applications/"; then
-        error "Failed to move Visual Studio Code to Applications folder even with sudo"
-        return 1
-      fi
-    else
-      return 1
-    fi
-  }\n" "${bold}${yellow}[WARN]${normal} $1"
+warn() {
+  printf "%b\\n" "${bold}${yellow}[WARN]${normal} $1"
 }
 
 error() {

@@ -2,6 +2,11 @@
 # This file is sourced for interactive shells (including login shells after ~/.zprofile)
 
 # >>> ENVIRONMENT & EXPORTS >>>
+# Security Configuration
+export LESSHISTFILE=/dev/null
+umask 022
+export HOMEBREW_NO_ANALYTICS=1
+export HOMEBREW_NO_INSECURE_REDIRECT=1
 # GPG Configuration
 export GPG_TTY=$(tty)
 # NVM Configuration
