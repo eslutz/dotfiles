@@ -6,18 +6,20 @@ My personal dotfiles configuration for quickly setting up a consistent developme
 
 This repository contains configuration files and setup scripts for:
 
-- Shell configuration (Zsh)
-- Git configuration
+- Shell configuration (Zsh with custom prompt and Git integration)
+- Git configuration with GPG signing
 - Vim configuration
-- Development tools
+- Development tools and CLI utilities
 
 ## Key Features
 
 - **Automatic backup**: Existing configuration files are automatically backed up before being replaced
 - **Smart symlinks**: Creates symbolic links from the dotfiles repository to your home directory
+- **Robust cleanup**: Scripts use trap commands to ensure proper cleanup even if interrupted (Ctrl+C)
 - **Adaptive installation**: Works on both new and existing setups
 - **macOS tools setup**: Installs essential development tools on macOS
 - **Idempotent**: Safe to run multiple times on the same machine
+- **Error resilient**: Continues installation even if individual components fail
 
 ## Installation
 
@@ -58,83 +60,160 @@ If you want to run individual components:
 ~/.dotfiles/scripts/cli_initial_setup.sh
 ```
 
+## What's Included
+
+### Dotfiles
+
+The following dotfiles are included and automatically linked:
+
+**Core dotfiles (always linked):**
+
+- `.gitconfig` - Git configuration with GPG signing, aliases, and GitHub CLI integration
+- `.gitignore` - Global Git ignore patterns (`.DS_Store`, `.dccache`)
+- `.vimrc` - Basic Vim configuration with syntax highlighting and mouse support
+- `.zprofile` - Zsh login shell configuration with PATH management for Homebrew, .NET, GPG, etc.
+- `.zshrc` - Interactive Zsh configuration with:
+  - Custom prompt with Git branch information
+  - Command completions for Homebrew, Azure CLI, .NET, NVM
+  - Useful aliases (`refresh_zsh`, `npmupdatemajor`)
+  - GitHub Copilot CLI integration
+  - GPG and NVM environment setup
+
+**Additional dotfiles:**
+
+Any other dotfiles in the repository root will be detected and you'll be prompted whether to link them.
+
+### macOS Development Environment
+
+The macOS setup script (`cli_initial_setup.sh`) installs and configures:
+
+**Package Manager:**
+
+- Homebrew (with Apple Silicon support)
+
+**Homebrew Formulas:**
+
+- `git` - Version control (prioritized over system Git)
+- `gh` - GitHub CLI with authentication and Copilot extension
+- `nvm` - Node Version Manager (installs latest LTS Node.js)
+- `azure-cli` - Azure command-line interface
+- `wget`, `curl` - Download tools
+- `jq` - JSON processor
+- `tree` - Directory tree viewer
+- `htop` - Process monitor
+
+**Homebrew Casks:**
+
+- `powershell` - Cross-platform shell
+- `font-monaspace` - Modern coding font
+
+**Direct Downloads:**
+
+- Visual Studio Code (with command-line integration)
+- GPG Suite (for key management and Git commit signing)
+- .NET SDK (latest LTS version)
+
+**Additional Components:**
+
+- Rosetta 2 (on Apple Silicon Macs, for Intel app compatibility)
+
+## Script Features
+
+### Robust Error Handling
+
+- **Trap-based cleanup**: All temporary files and mounted disk images are automatically cleaned up, even if scripts are interrupted with Ctrl+C
+- **Graceful degradation**: If individual components fail, the script continues with others
+- **User choice**: Prompted to continue or abort when failures occur
+
+### Smart Linking
+
+- **Backup existing files**: Original files are safely backed up before creating symlinks
+- **Duplicate detection**: Won't create duplicate symlinks
+- **Selective linking**: Choose which additional dotfiles to link
+
+### Path Management
+
+- **No duplicates**: PATH entries are checked before adding
+- **Proper precedence**: Homebrew tools take priority over system tools
+- **Environment detection**: Automatically handles Apple Silicon vs Intel Macs
+
 ## Customization
 
 ### Adding New Dotfiles
 
 1. Add your dotfile to the repository root (e.g., `.tmux.conf`)
-2. The script will automatically detect it and offer to link it
+2. Run `./scripts/create_links.sh` - it will automatically detect and offer to link new files
+3. Or add it to the `core_dotfiles` array in `create_links.sh` if it should always be linked
 
 ### Modifying Existing Dotfiles
 
 Since the files in your home directory are symlinks to this repository:
 
-1. Edit any dotfile directly
-2. Changes will be tracked in the repository
-3. Commit and push to save your changes
+1. Edit any dotfile directly in your home directory or in the repository
+2. Changes are immediately reflected (since they're the same file)
+3. Commit and push changes to save them in the repository
 
-### Core vs. Additional Dotfiles
+### Customizing the Shell
 
-Core dotfiles are always linked:
+The Zsh configuration is split into two files:
 
-- `.gitconfig`
-- `.gitignore`
-- `.vimrc`
-- `.zprofile`
-- `.zshrc`
-
-Any other dotfiles in the repository will be detected and you'll be asked if you want to link them too.
+- `.zprofile`: PATH setup and login shell configuration
+- `.zshrc`: Interactive shell features, aliases, and customizations
 
 ## Backup and Recovery
 
+### Automatic Backups
+
 - Backups are stored in `~/.dotfiles_backup/TIMESTAMP/`
-- To restore all files from a backup: `cp -r ~/.dotfiles_backup/TIMESTAMP/* ~/`
-- To restore a specific file: `cp ~/.dotfiles_backup/TIMESTAMP/.zshrc ~/`
+- Each run creates a new timestamped backup directory
+- Only files that would be overwritten are backed up
 
-### Manual Setup
-
-If you prefer to set up only specific components:
+### Restoration
 
 ```bash
-# Only create symbolic links for dotfiles
-~/.dotfiles/scripts/create_links.sh
+# Restore all files from a specific backup
+cp -r ~/.dotfiles_backup/TIMESTAMP/* ~/
 
-# Only set up CLI tools on macOS
-~/.dotfiles/scripts/cli_initial_setup.sh
+# Restore a specific file
+cp ~/.dotfiles_backup/TIMESTAMP/.zshrc ~/
+
+# List all backups
+ls -la ~/.dotfiles_backup/
 ```
 
-## Features
+## Troubleshooting
 
-### macOS Setup
+### GitHub CLI Authentication
 
-The macOS setup script (`cli_initial_setup.sh`) installs:
+If GitHub CLI authentication fails during setup:
 
-- Homebrew (package manager)
-- Node.js (via NVM)
-- .NET SDK
-- Git
-- Azure CLI
-- GitHub CLI & Copilot extension
-- Visual Studio Code
-- GPG Suite (for key management & Git signing)
-- Command-line utilities (wget, curl, jq, tree, htop)
-- PowerShell
-- Font Monaspace
-- Rosetta 2 (if on Apple Silicon)
+```bash
+gh auth login
+gh extension install github/gh-copilot
+```
 
-### Dotfiles
+### Node.js/NVM Issues
 
-The following dotfiles are included:
+If Node.js isn't available after installation:
 
-- `.gitconfig` - Git configuration and aliases
-- `.gitignore` - Global Git ignore patterns
-- `.vimrc` - Vim configuration
-- `.zprofile` - Zsh profile for login shells
-- `.zshrc` - Zsh configuration and aliases
+```bash
+# Reload your shell configuration
+source ~/.zprofile && source ~/.zshrc
 
-## Adding New Dotfiles
+# Or manually install Node.js
+nvm install --lts
+nvm use --lts
+nvm alias default 'lts/*'
+```
 
-To add a new dotfile to the repository:
+### .NET SDK Issues
 
-1. Add the file to the repository root
-2. Update `scripts/create_links.sh` to create a symbolic link for the new file
+If .NET commands aren't found:
+
+```bash
+# Check if .NET is installed
+ls ~/.dotnet/
+
+# Reload shell configuration
+source ~/.zprofile
+```
