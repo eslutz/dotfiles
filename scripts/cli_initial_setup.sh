@@ -7,35 +7,9 @@
 
 set -euo pipefail
 
-# =============================================================================
-# OUTPUT FORMATTING FUNCTIONS
-# =============================================================================
-
-# Define colors for consistent output formatting
-bold="\033[1m"
-green="\033[32m"
-blue="\033[34m"
-yellow="\033[33m"
-red="\033[31m"
-normal="\033[0m"
-
-# Output helper functions
-info() {
-  printf "%b\\n" "${bold}${green}[INFO]${normal} $1"
-}
-
-warn() {
-  printf "%b\\n" "${bold}${yellow}[WARN]${normal} $1"
-}
-
-error() {
-  printf "%b\\n" "${bold}${red}[ERROR]${normal} $1"
-}
-
-section() {
-  printf "\\n%b\\n" "${bold}${blue}[SETUP]${normal} $1"
-  printf "%b\\n" "${blue}=================================================${normal}"
-}
+# Source shared output formatting functions
+# shellcheck disable=SC1091
+source "$(dirname "$0")/output_formatting.sh"
 
 # =============================================================================
 # SECURITY CHECKS
@@ -52,6 +26,8 @@ section "Starting macOS development environment setup..."
 # =============================================================================
 # HOMEBREW INSTALLATION AND SETUP
 # =============================================================================
+
+section "Setting up Homebrew..."
 info "Checking Homebrew installation..."
 if ! command -v brew &>/dev/null; then
   info "Installing Homebrew..."
@@ -85,6 +61,8 @@ fi
 # APPLE SILICON COMPATIBILITY
 # =============================================================================
 
+section "Checking Apple Silicon compatibility..."
+info "Checking for Rosetta 2 installation..."
 # Install Rosetta 2 for Intel-based app compatibility on Apple Silicon
 if [[ "$(uname -m)" == "arm64" ]]; then
   if ! pgrep -q oahd; then
@@ -104,21 +82,22 @@ fi
 #   $1: Package type ("formula" or "cask")
 #   $@: List of package names to install
 brew_install() {
-  local pkg_type=$1
+  local pkg_type="$1"
   shift
   local packages=("$@")
   local failed_packages=()
 
   for package in "${packages[@]}"; do
-    info "Installing $package..."
     if [[ "$pkg_type" == "cask" ]]; then
+      info "Installing $package (cask)..."
       if ! brew install --cask "$package"; then
-        warn "Failed to install $package"
+        warn "Failed to install $package (cask)"
         failed_packages+=("$package")
       fi
     else
+      info "Installing $package (formula)..."
       if ! brew install "$package"; then
-        warn "Failed to install $package"
+        warn "Failed to install $package (formula)"
         failed_packages+=("$package")
       fi
     fi
@@ -132,20 +111,18 @@ brew_install() {
 }
 
 # =============================================================================
-# ESSENTIAL CLI TOOLS INSTALLATION
+# BREW PACKAGE INSTALLATIONS
 # =============================================================================
 
-section "Installing essential command-line tools..."
-info "Installing CLI packages..."
-
+section "Installing Brew packages..."
 # Define package lists
 formulas=(git azure-cli wget curl jq tree htop)
 casks=(powershell font-monaspace)
 
-info "Installing command-line formulas..."
+info "Installing formulas..."
 brew_install "formula" "${formulas[@]}"
 
-info "Installing GUI applications and fonts..."
+info "Installing casks..."
 brew_install "cask" "${casks[@]}"
 
 # =============================================================================
@@ -155,8 +132,6 @@ brew_install "cask" "${casks[@]}"
 # Function to setup GitHub CLI with authentication and extensions
 # Installs GitHub CLI, authenticates user, and installs Copilot extension
 setup_github_cli() {
-  info "Setting up GitHub CLI..."
-
   # Install GitHub CLI if not already installed
   if ! command -v gh &>/dev/null; then
     info "Installing GitHub CLI..."
@@ -218,13 +193,11 @@ setup_node() {
   local nvm_dir="$HOME/.nvm"
   export NVM_DIR="$nvm_dir"
 
-  info "Setting up Node.js via NVM..."
-
   # Create NVM directory if it doesn't exist
   mkdir -p "$nvm_dir"
 
   # Install NVM via Homebrew if not already installed
-  if ! command -v brew &>/dev/null || ! [ -d "$(brew --prefix)/opt/nvm" ]; then
+  if ! [ -d "$(brew --prefix)/opt/nvm" ]; then
     info "Installing NVM via Homebrew..."
     if ! brew install nvm; then
       error "Failed to install NVM via Homebrew"
@@ -236,9 +209,24 @@ setup_node() {
   fi
 
   # Source NVM from Homebrew installation (preferred method)
-  if command -v brew &>/dev/null && [ -d "$(brew --prefix)/opt/nvm" ]; then
-    [ -s "$(brew --prefix)/opt/nvm/nvm.sh" ] && \. "$(brew --prefix)/opt/nvm/nvm.sh"
+  if [ -s "$(brew --prefix)/opt/nvm/nvm.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$(brew --prefix)/opt/nvm/nvm.sh"
     info "Using NVM installed via Homebrew"
+
+    # Ensure NVM sourcing is in shell profile for future sessions
+    local shell_profile
+    if [[ "$SHELL" == *"zsh"* ]]; then
+      shell_profile="$HOME/.zshrc"
+    elif [[ "$SHELL" == *"bash"* ]]; then
+      shell_profile="$HOME/.bash_profile"
+    else
+      shell_profile="$HOME/.profile"
+    fi
+    if ! grep -q 'nvm.sh' "$shell_profile" 2>/dev/null; then
+      echo "[ -s \"$(brew --prefix)/opt/nvm/nvm.sh\" ] && . \"$(brew --prefix)/opt/nvm/nvm.sh\"" >> "$shell_profile"
+      info "Added NVM sourcing to $shell_profile"
+    fi
 
     # Check if NVM command is available
     if command -v nvm &>/dev/null; then
@@ -286,10 +274,8 @@ setup_node || {
 }
 
 # =============================================================================
-# VISUAL STUDIO CODE INSTALLATION
+# VISUAL STUDIO CODE INSTALLATION FUNCTIONS
 # =============================================================================
-
-section "Installing developer applications..."
 
 # Function to install Visual Studio Code
 install_vscode() {
@@ -359,6 +345,8 @@ install_vscode() {
   return 0
 }
 
+section "Installing developer applications..."
+
 # =============================================================================
 # VISUAL STUDIO CODE SETUP EXECUTION
 # =============================================================================
@@ -393,6 +381,19 @@ fi
 # GPG SUITE INSTALLATION FUNCTIONS
 # =============================================================================
 
+# Function to clean up GPG Suite installation
+cleanup_gpg_install() {
+  local tmp_dir="$1"
+  # Attempt to detach the disk image if it's mounted
+  if mount | grep -q "/Volumes/GPG Suite"; then
+    info "Cleanup: Detaching GPG Suite disk image..."
+    hdiutil detach "/Volumes/GPG Suite" -force || true
+  fi
+  # Remove the temporary directory
+  info "Cleanup: Removing temporary directory for GPG Suite installation..."
+  rm -rf "$tmp_dir"
+}
+
 # Function to install GPG Suite
 install_gpg_suite() {
   info "Installing GPG Suite for secure key management and Git signing..."
@@ -409,19 +410,6 @@ install_gpg_suite() {
 
   # Set up trap to ensure cleanup of temporary directory and possibly mounted DMG
   trap 'cleanup_gpg_install "$tmp_dir"' EXIT INT TERM
-
-  # Define cleanup function for GPG Suite installation
-  cleanup_gpg_install() {
-    local tmp_dir=$1
-    # Attempt to detach the disk image if it's mounted
-    if mount | grep -q "/Volumes/GPG Suite"; then
-      info "Cleanup: Detaching GPG Suite disk image..."
-      hdiutil detach "/Volumes/GPG Suite" -force || true
-    fi
-    # Remove the temporary directory
-    info "Cleanup: Removing temporary directory for GPG Suite installation..."
-    rm -rf "$tmp_dir"
-  }
 
   cd "$tmp_dir" || {
     error "Failed to create temporary directory"
@@ -483,8 +471,6 @@ install_gpg_suite || {
 
 # Function to install .NET SDK
 install_dotnet() {
-  info "Installing latest LTS .NET SDK..."
-
   # Create a temporary directory for downloads
   local tmp_dir
   tmp_dir=$(mktemp -d)
@@ -499,7 +485,7 @@ install_dotnet() {
 
   # Download the .NET installation script
   info "Downloading .NET installation script..."
-  if ! wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh 2>/dev/null; then
+  if ! curl -fsSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh; then
     error "Failed to download .NET installation script"
     return 1
   fi
@@ -513,8 +499,6 @@ install_dotnet() {
     error "Failed to install .NET SDK"
     return 1
   fi
-
-  # We no longer need to manually clean up since trap will handle it
 
   # Check if .NET was installed successfully
   if ! command -v dotnet &>/dev/null && [ ! -f "$HOME/.dotnet/dotnet" ]; then
@@ -563,7 +547,7 @@ fi
 # shellcheck disable=SC1090
 source "$SHELL_PROFILE" 2>/dev/null || {
   warn "Could not source $SHELL_PROFILE directly in this script"
-  info "Please run 'source $SHELL_PROFILE' manually after the script completes"
+  info "Please run 'source $SHELL_PROFILE' manually after the script completes. If you opened a new terminal, restart it to apply all changes."
 }
 
 info "🚀 Environment is ready to use!"

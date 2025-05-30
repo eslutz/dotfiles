@@ -7,30 +7,9 @@
 
 set -euo pipefail
 
-# =============================================================================
-# OUTPUT FORMATTING FUNCTIONS
-# =============================================================================
-
-# Define colors for consistent output formatting
-bold="\033[1m"
-green="\033[32m"
-blue="\033[34m"
-yellow="\033[33m"
-red="\033[31m"
-normal="\033[0m"
-
-# Output helper functions
-info() {
-  printf "%b\\n" "${bold}${green}[INFO]${normal} $1"
-}
-
-warn() {
-  printf "%b\\n" "${bold}${yellow}[WARN]${normal} $1"
-}
-
-error() {
-  printf "%b\\n" "${bold}${red}[ERROR]${normal} $1"
-}
+# Source shared output formatting functions
+# shellcheck disable=SC1091
+source "$(dirname "$0")/output_formatting.sh"
 
 # =============================================================================
 # INITIALIZATION
@@ -164,7 +143,7 @@ for file in "$DOTFILES_DIR"/.[^.]* ; do
   filename=$(basename "$file")
 
   # Skip directories, git files, and files already in core_dotfiles
-  if [[ -f "$file" && "$filename" != ".git"* && ! " ${core_dotfiles[*]} " =~ " $filename " ]]; then
+  if [[ -f "$file" && "$filename" != ".git"* && ! " ${core_dotfiles[*]} " =~ $filename ]]; then
     additional_dotfiles+=("$filename")
   fi
 done
