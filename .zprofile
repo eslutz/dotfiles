@@ -28,7 +28,6 @@ path_append "/usr/local/MacGPG2/bin"
 
 # .NET SDK and Tools
 # Only set this if it's not already in the environment
-# TODO: remove from script cli_initial_setup.sh will also add this to .zshrc
 if [[ -d "$HOME/.dotnet" && -z "${DOTNET_ROOT}" ]]; then
   export DOTNET_ROOT="$HOME/.dotnet"
   path_append "$DOTNET_ROOT"

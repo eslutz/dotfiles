@@ -41,6 +41,12 @@ link_file() {
   local src="$1"
   local dest="$2"
 
+  # Check if source file exists
+  if [[ ! -e "$src" ]]; then
+    error "Source file does not exist: $src"
+    return 1
+  fi
+
   # Check if the destination exists and is not a symlink pointing to our file
   if [[ -e "$dest" && ! -L "$dest" ]]; then
     # File exists but is not a symlink

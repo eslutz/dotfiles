@@ -169,6 +169,15 @@ section "Setup complete!"
 say "✅ CLI initial setup complete."
 say "🔄 Sourcing shell configuration..."
 
+# Determine the shell profile to source based on the current shell
+if [[ "$SHELL" == *"zsh"* ]]; then
+  SHELL_PROFILE="$HOME/.zshrc"
+elif [[ "$SHELL" == *"bash"* ]]; then
+  SHELL_PROFILE="$HOME/.bash_profile"
+else
+  SHELL_PROFILE="$HOME/.profile"
+fi
+
 # Source the shell configuration to apply changes immediately
 # shellcheck disable=SC1090
 source "$SHELL_PROFILE" 2>/dev/null || {
