@@ -1,30 +1,48 @@
+# Default branch name for new repositories
 [init]
-	defaultBranch = main
+    defaultBranch = main
+
+# User identification for commits
 [user]
-	name = Eric Slutz
-	email = eric.slutz@icloud.com
-	signingkey = 73972EAEA22EB186
+    name = Eric Slutz
+    email = eric.slutz@icloud.com
+    signingkey = 73972EAEA22EB186  # GPG key for commit signing
+
+# Commit configuration
 [commit]
-	gpgSign = true
+    gpgSign = true  # Automatically sign all commits with GPG
+
+# Core Git behavior settings
 [core]
-	excludesfile = /Users/ericslutz/.gitignore
-	autocrlf = input
-	precomposeUnicode = true
-	quotepath = false
+    excludesfile = /Users/ericslutz/.gitignore  # Global gitignore file
+    autocrlf = input                            # Convert CRLF to LF on commit, leave LF unchanged on checkout
+    precomposeUnicode = true                    # Handle Unicode normalization on macOS
+    quotepath = false                           # Don't quote non-ASCII characters in file paths
+
+# GitHub CLI integration for credential management
 [credential "https://github.com"]
-	helper =
-	helper = !/opt/homebrew/bin/gh auth git-credential
+    helper =
+    helper = !/opt/homebrew/bin/gh auth git-credential
+
 [credential "https://gist.github.com"]
-	helper =
-	helper = !/opt/homebrew/bin/gh auth git-credential
+    helper =
+    helper = !/opt/homebrew/bin/gh auth git-credential
+
+# Diff display configuration
 [diff]
-	colorMoved = default
+    colorMoved = default  # Highlight moved code blocks in diffs
+
+# Pull strategy configuration
 [pull]
-	rebase = false
+    rebase = false  # Use merge strategy for pulls (create merge commits)
+
+# Push behavior configuration
 [push]
-	autoSetupRemote = true
+    autoSetupRemote = true  # Automatically set up remote tracking for new branches
+
+# Git LFS (Large File Storage) configuration
 [filter "lfs"]
-	clean = git-lfs clean -- %f
-	smudge = git-lfs smudge -- %f
-	process = git-lfs filter-process
-	required = true
+    clean = git-lfs clean -- %f       # Clean filter for LFS files
+    smudge = git-lfs smudge -- %f     # Smudge filter for LFS files
+    process = git-lfs filter-process  # Process filter for LFS files
+    required = true                   # Make LFS required for this repository

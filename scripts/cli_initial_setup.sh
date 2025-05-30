@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-#
-# Initial setup script for macOS development environment
-#
+# =============================================================================
+# macOS Development Environment Setup Script
+# =============================================================================
+# Installs and configures essential development tools and applications for macOS
+# Includes Homebrew, CLI tools, Node.js, .NET SDK, and GUI applications
 
 set -euo pipefail
 
-# Define colors for output
+# =============================================================================
+# OUTPUT FORMATTING FUNCTIONS
+# =============================================================================
+
+# Define colors for consistent output formatting
 bold="\033[1m"
 green="\033[32m"
 blue="\033[34m"
@@ -13,6 +19,7 @@ yellow="\033[33m"
 red="\033[31m"
 normal="\033[0m"
 
+# Output helper functions
 info() {
   printf "%b\\n" "${bold}${green}[INFO]${normal} $1"
 }
@@ -30,7 +37,11 @@ section() {
   printf "%b\\n" "${blue}=================================================${normal}"
 }
 
-# Check if running with sudo (we don't want that)
+# =============================================================================
+# SECURITY CHECKS
+# =============================================================================
+
+# Ensure script is not run with sudo privileges
 if [ "$(id -u)" -eq 0 ]; then
   error "This script should not be run with sudo. Please run as a regular user."
   exit 1
@@ -38,7 +49,9 @@ fi
 
 section "Starting macOS development environment setup..."
 
-# --- Homebrew ---
+# =============================================================================
+# HOMEBREW INSTALLATION AND SETUP
+# =============================================================================
 info "Checking Homebrew installation..."
 if ! command -v brew &>/dev/null; then
   info "Installing Homebrew..."
@@ -47,7 +60,7 @@ if ! command -v brew &>/dev/null; then
     exit 1
   fi
 
-  # For Apple Silicon Macs
+  # Initialize Homebrew for Apple Silicon Macs
   if [[ -f "/opt/homebrew/bin/brew" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   else
@@ -56,23 +69,23 @@ if ! command -v brew &>/dev/null; then
   fi
 else
   info "Homebrew is already installed."
-  # For Apple Silicon Macs
+  # Ensure Homebrew is properly initialized for Apple Silicon Macs
   if [[ -f "/opt/homebrew/bin/brew" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
 fi
 
-# Verify Homebrew is working
+# Verify Homebrew is working correctly
 if ! command -v brew &>/dev/null; then
   error "Homebrew installation failed or PATH not set correctly"
   exit 1
 fi
 
-# --- Install packages ---
-section "Installing essential command-line tools..."
-info "Installing CLI packages..."
+# =============================================================================
+# APPLE SILICON COMPATIBILITY
+# =============================================================================
 
-# Check if Rosetta 2 is needed (for Apple Silicon Macs)
+# Install Rosetta 2 for Intel-based app compatibility on Apple Silicon
 if [[ "$(uname -m)" == "arm64" ]]; then
   if ! pgrep -q oahd; then
     info "Installing Rosetta 2 (needed for some Intel-based apps)..."
@@ -82,7 +95,14 @@ if [[ "$(uname -m)" == "arm64" ]]; then
   fi
 fi
 
-# Function to install brew packages with error handling
+# =============================================================================
+# PACKAGE INSTALLATION UTILITIES
+# =============================================================================
+
+# Function to install Homebrew packages with comprehensive error handling
+# Parameters:
+#   $1: Package type ("formula" or "cask")
+#   $@: List of package names to install
 brew_install() {
   local pkg_type=$1
   shift
@@ -111,18 +131,29 @@ brew_install() {
   return 0
 }
 
-# Core dev tools
-info "Installing core development tools..."
+# =============================================================================
+# ESSENTIAL CLI TOOLS INSTALLATION
+# =============================================================================
 
-# Install other development tools
+section "Installing essential command-line tools..."
+info "Installing CLI packages..."
+
+# Define package lists
 formulas=(git azure-cli wget curl jq tree htop)
 casks=(powershell font-monaspace)
 
-info "Installing additional development tools..."
+info "Installing command-line formulas..."
 brew_install "formula" "${formulas[@]}"
+
+info "Installing GUI applications and fonts..."
 brew_install "cask" "${casks[@]}"
 
-# Function to setup GitHub CLI
+# =============================================================================
+# GITHUB CLI SETUP FUNCTIONS
+# =============================================================================
+
+# Function to setup GitHub CLI with authentication and extensions
+# Installs GitHub CLI, authenticates user, and installs Copilot extension
 setup_github_cli() {
   info "Setting up GitHub CLI..."
 
@@ -139,7 +170,7 @@ setup_github_cli() {
   fi
 
   # Check authentication status
-  info "Checking GitHub CLI auth..."
+  info "Checking GitHub CLI authentication..."
   if ! gh auth status &>/dev/null; then
     info "GitHub CLI not authenticated. Starting login process..."
     if ! gh auth login; then
@@ -166,7 +197,10 @@ setup_github_cli() {
   return 0
 }
 
-# --- GitHub CLI setup ---
+# =============================================================================
+# GITHUB CLI SETUP EXECUTION
+# =============================================================================
+
 section "Setting up GitHub CLI..."
 setup_github_cli || {
   warn "GitHub CLI setup failed, but continuing with other installations"
@@ -174,7 +208,12 @@ setup_github_cli || {
   info "To install the GitHub Copilot CLI extension, run 'gh extension install github/gh-copilot'"
 }
 
-# Function to setup and use Node.js with NVM
+# =============================================================================
+# NODE.JS SETUP FUNCTIONS
+# =============================================================================
+
+# Function to setup and configure Node.js via NVM
+# Installs NVM via Homebrew and sets up the latest LTS Node.js version
 setup_node() {
   local nvm_dir="$HOME/.nvm"
   export NVM_DIR="$nvm_dir"
@@ -196,7 +235,7 @@ setup_node() {
     info "NVM already installed via Homebrew"
   fi
 
-  # Source NVM from Homebrew installation (preferred)
+  # Source NVM from Homebrew installation (preferred method)
   if command -v brew &>/dev/null && [ -d "$(brew --prefix)/opt/nvm" ]; then
     [ -s "$(brew --prefix)/opt/nvm/nvm.sh" ] && \. "$(brew --prefix)/opt/nvm/nvm.sh"
     info "Using NVM installed via Homebrew"
@@ -236,14 +275,20 @@ setup_node() {
   fi
 }
 
-# --- NVM + Node ---
+# =============================================================================
+# NODE.JS SETUP EXECUTION
+# =============================================================================
+
 section "Setting up Node.js environment..."
 setup_node || {
   warn "Node.js setup failed, but continuing with other installations"
   info "You can try setting up Node.js later by running 'nvm install --lts'"
 }
 
-# --- Developer Applications ---
+# =============================================================================
+# VISUAL STUDIO CODE INSTALLATION
+# =============================================================================
+
 section "Installing developer applications..."
 
 # Function to add VS Code to PATH
@@ -323,7 +368,10 @@ install_vscode() {
   return 0
 }
 
-# --- Install Visual Studio Code ---
+# =============================================================================
+# VISUAL STUDIO CODE SETUP EXECUTION
+# =============================================================================
+
 section "Installing Visual Studio Code..."
 if [ -d "/Applications/Visual Studio Code.app" ]; then
   info "Visual Studio Code already installed."
@@ -345,6 +393,10 @@ else
     fi
   }
 fi
+
+# =============================================================================
+# GPG SUITE INSTALLATION FUNCTIONS
+# =============================================================================
 
 # Function to install GPG Suite
 install_gpg_suite() {
@@ -415,7 +467,10 @@ install_gpg_suite() {
   return 0
 }
 
-# --- Install GPG Suite ---
+# =============================================================================
+# GPG SUITE SETUP EXECUTION
+# =============================================================================
+
 section "Installing GPG Suite..."
 install_gpg_suite || {
   read -p "Continue with setup without GPG Suite? [Y/n] " -n 1 -r
@@ -426,6 +481,10 @@ install_gpg_suite || {
     info "Continuing without GPG Suite"
   fi
 }
+
+# =============================================================================
+# .NET SDK INSTALLATION FUNCTIONS
+# =============================================================================
 
 # Function to install .NET SDK
 install_dotnet() {
@@ -473,7 +532,10 @@ install_dotnet() {
   return 0
 }
 
-# --- .NET SDK ---
+# =============================================================================
+# .NET SDK SETUP EXECUTION
+# =============================================================================
+
 section "Installing .NET SDK..."
 install_dotnet || {
   read -p "Continue with setup without .NET SDK? [Y/n] " -n 1 -r
@@ -484,6 +546,10 @@ install_dotnet || {
     info "Continuing without .NET SDK"
   fi
 }
+
+# =============================================================================
+# SETUP COMPLETION AND SHELL INITIALIZATION
+# =============================================================================
 
 section "Setup complete!"
 info "✅ CLI initial setup complete."

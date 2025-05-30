@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-#
-# Creates symbolic links for dotfiles in the home directory
-#
+# =============================================================================
+# Symbolic Links Creation Script
+# =============================================================================
+# Creates symbolic links for dotfiles from the repository to the home directory
+# Automatically backs up existing files before creating links
 
 set -euo pipefail
 
-# Define colors for output
+# =============================================================================
+# OUTPUT FORMATTING FUNCTIONS
+# =============================================================================
+
+# Define colors for consistent output formatting
 bold="\033[1m"
 green="\033[32m"
 blue="\033[34m"
@@ -13,7 +19,7 @@ yellow="\033[33m"
 red="\033[31m"
 normal="\033[0m"
 
-# Helper functions for output
+# Output helper functions
 info() {
   printf "%b\\n" "${bold}${green}[INFO]${normal} $1"
 }
@@ -26,17 +32,29 @@ error() {
   printf "%b\\n" "${bold}${red}[ERROR]${normal} $1"
 }
 
+# =============================================================================
+# INITIALIZATION
+# =============================================================================
+
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 DOTFILES_DIR="$(dirname "$SCRIPT_DIR")"
 
 info "Starting dotfile linking from $DOTFILES_DIR..."
 
+# =============================================================================
+# BACKUP CONFIGURATION
+# =============================================================================
+
 # Create backup directory if backup is needed
 BACKUP_DIR="$HOME/.dotfiles_backup/$(date +%Y%m%d_%H%M%S)"
 BACKUP_NEEDED=0
 
-# Function to create a symbolic link
+# =============================================================================
+# LINK CREATION FUNCTION
+# =============================================================================
+
+# Function to create a symbolic link with backup support
 link_file() {
   local src="$1"
   local dest="$2"
@@ -97,6 +115,10 @@ link_file() {
   info "Created link: $dest -> $src"
 }
 
+# =============================================================================
+# DOTFILES CONFIGURATION
+# =============================================================================
+
 # Define core dotfiles that should always be linked
 core_dotfiles=(
   ".gitconfig"
@@ -105,6 +127,10 @@ core_dotfiles=(
   ".zprofile"
   ".zshrc"
 )
+
+# =============================================================================
+# LINKING OPERATIONS
+# =============================================================================
 
 # Function to link all dotfiles in the given array
 link_dotfiles() {
@@ -122,6 +148,10 @@ link_dotfiles() {
 
   info "$success_count files linked successfully, $fail_count files failed"
 }
+
+# =============================================================================
+# CORE DOTFILES LINKING
+# =============================================================================
 
 # Link core dotfiles first
 info "Linking core dotfiles..."

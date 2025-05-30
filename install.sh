@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-#
-# Main installation script for dotfiles
-#
+# =============================================================================
+# Dotfiles Installation Script
+# =============================================================================
+# Main installation script that sets up the complete development environment
+# Creates symbolic links and optionally installs development tools
 
 set -euo pipefail
 
-# Define colors for output
+# =============================================================================
+# OUTPUT FORMATTING FUNCTIONS
+# =============================================================================
+
+# Define colors for consistent output formatting
 bold="\033[1m"
 green="\033[32m"
 blue="\033[34m"
@@ -13,7 +19,7 @@ yellow="\033[33m"
 red="\033[31m"
 normal="\033[0m"
 
-# Helper functions for output
+# Output helper functions
 info() {
   printf "%b\\n" "${bold}${green}[INFO]${normal} $1"
 }
@@ -31,6 +37,10 @@ section() {
   printf "%b\\n" "${blue}=================================================${normal}"
 }
 
+# =============================================================================
+# ENVIRONMENT DETECTION
+# =============================================================================
+
 # Get the directory where this script is located
 DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -38,9 +48,8 @@ section "Welcome to Dotfiles Setup"
 info "This script will set up your development environment."
 info "Dotfiles location: $DOTFILES_DIR"
 
-# Detect environment
+# Detect operating system
 IS_MACOS=false
-
 if [[ "$(uname)" == "Darwin" ]]; then
   IS_MACOS=true
   info "macOS environment detected"
@@ -48,7 +57,11 @@ else
   warn "Unsupported environment. Some features may not work correctly."
 fi
 
-# Ask for confirmation
+# =============================================================================
+# USER CONFIRMATION
+# =============================================================================
+
+# Ask for confirmation before proceeding
 read -p "Do you want to continue with installation? [y/N] " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -56,7 +69,10 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
   exit 1
 fi
 
-# Create symbolic links
+# =============================================================================
+# SYMBOLIC LINKS SETUP
+# =============================================================================
+
 section "Setting up symbolic links for dotfiles"
 if ! "$DOTFILES_DIR/scripts/create_links.sh"; then
   error "Failed to set up symbolic links"
@@ -72,7 +88,10 @@ else
   info "Symbolic links set up successfully!"
 fi
 
-# Environment-specific setup
+# =============================================================================
+# MACOS-SPECIFIC SETUP
+# =============================================================================
+
 if [[ "$IS_MACOS" == "true" ]]; then
   section "Setting up macOS environment"
   echo
@@ -92,7 +111,11 @@ if [[ "$IS_MACOS" == "true" ]]; then
   fi
 fi
 
-# Check for backup files
+# =============================================================================
+# BACKUP INFORMATION
+# =============================================================================
+
+# Check for backup files and inform user
 BACKUP_DIR_BASE="$HOME/.dotfiles_backup"
 if [[ -d "$BACKUP_DIR_BASE" ]]; then
   LATEST_BACKUP=$(find "$BACKUP_DIR_BASE" -maxdepth 1 -type d | sort -r | head -n1)
@@ -101,6 +124,10 @@ if [[ -d "$BACKUP_DIR_BASE" ]]; then
     info "To restore backups: cp -r $LATEST_BACKUP/* $HOME/"
   fi
 fi
+
+# =============================================================================
+# SETUP COMPLETION AND SHELL REFRESH
+# =============================================================================
 
 section "Setup Complete"
 

@@ -1,44 +1,55 @@
-# ~/.zshrc - Interactive shell configuration
+# =============================================================================
+# ~/.zshrc - Interactive Zsh Shell Configuration
+# =============================================================================
 # This file is sourced for interactive shells (including login shells after ~/.zprofile)
+# Configures interactive shell features: completions, aliases, prompt, and tool integrations
 
-# >>> ENVIRONMENT & EXPORTS >>>
-# Security Configuration
-export LESSHISTFILE=/dev/null
-umask 022
-export HOMEBREW_NO_ANALYTICS=1
-export HOMEBREW_NO_INSECURE_REDIRECT=1
-# GPG Configuration
+# =============================================================================
+# ENVIRONMENT VARIABLES & EXPORTS
+# =============================================================================
+
+# Security and privacy settings
+export LESSHISTFILE=/dev/null           # Disable less history file
+umask 022                               # Set default file permissions
+export HOMEBREW_NO_ANALYTICS=1          # Disable Homebrew analytics
+export HOMEBREW_NO_INSECURE_REDIRECT=1  # Prevent insecure redirects
+
+# GPG configuration for signing
 export GPG_TTY=$(tty)
-# NVM Configuration
+
+# Node Version Manager (NVM) setup
 export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && . "/opt/homebrew/opt/nvm/nvm.sh"
 
-# >>> COMPLETIONS >>>
-# Homebrew completions
-if type brew &>/dev/null
-then
+# =============================================================================
+# SHELL COMPLETIONS
+# =============================================================================
+
+# Homebrew completions setup
+if type brew &>/dev/null; then
   FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
   FPATH="$(brew --prefix)/share/zsh-completions:${FPATH}"
-
   autoload -Uz compinit
   compinit
 fi
-# Enable bash compatibility
+
+# Enable bash compatibility for completions
 autoload bashcompinit && bashcompinit
-# NVM completions
+
+# NVM bash completions
 [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && . "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
-# Azure completions
+
+# Azure CLI completions
 if [ -f "$(brew --prefix)/etc/bash_completion.d/az" ]; then
   source "$(brew --prefix)/etc/bash_completion.d/az"
 fi
-# Dotnet completions
+
+# .NET CLI completions
 if command -v dotnet &>/dev/null; then
-  _dotnet_zsh_complete()
-  {
+  _dotnet_zsh_complete() {
     local completions=("$(dotnet complete "$words")")
-    # If the completion list is empty, just continue with filename selection
-    if [ -z "$completions" ]
-    then
+    # If no completions available, fall back to filename completion
+    if [ -z "$completions" ]; then
       _arguments '*::arguments: _normal'
       return
     fi
@@ -47,21 +58,34 @@ if command -v dotnet &>/dev/null; then
   compdef _dotnet_zsh_complete dotnet
 fi
 
-# >>> ALIASES >>>
-# Refresh source
+# =============================================================================
+# ALIASES
+# =============================================================================
+
+# Shell management
 alias refresh_zsh="source ~/.zshrc"
-# NPM major version update
+
+# Development utilities
 alias npmupdatemajor="npx npm-check-updates -u"
 
-# >>> CUSTOMIZED PROMPT W/ GIT INFO >>>
+# =============================================================================
+# CUSTOM PROMPT WITH GIT INTEGRATION
+# =============================================================================
+
+# Configure Git version control info display
 autoload -Uz vcs_info
 precmd() { vcs_info }
 zstyle ':vcs_info:git:*' formats '%F{cyan}(%b)%f'
 setopt PROMPT_SUBST
+
+# Set custom prompt: user@host directory (git-branch) >
 PROMPT='%n@%m %1~${vcs_info_msg_0_} > '
 
-# >>> TOOL INTEGRATIONS >>>
-# GitHub Copilot CLI integration
+# =============================================================================
+# TOOL INTEGRATIONS
+# =============================================================================
+
+# GitHub Copilot CLI aliases (ghcs, ghce)
 if command -v gh &>/dev/null; then
   gh copilot alias -- zsh > /dev/null 2>&1 && eval "$(gh copilot alias -- zsh)" || true
 fi
