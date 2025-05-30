@@ -51,42 +51,121 @@ link_file() {
   if [[ -e "$dest" && ! -L "$dest" ]]; then
     # File exists but is not a symlink
     if [[ $BACKUP_NEEDED -eq 0 ]]; then
-      mkdir -p "$BACKUP_DIR"
+      if ! mkdir -p "$BACKUP_DIR"; then
+        error "Failed to create backup directory: $BACKUP_DIR"
+        return 1
+      fi
       BACKUP_NEEDED=1
     fi
     warn "Backing up existing $dest to $BACKUP_DIR/"
-    cp -R "$dest" "$BACKUP_DIR/" 2>/dev/null || true
+    if ! mv "$dest" "$BACKUP_DIR/"; then
+      error "Failed to back up $dest to $BACKUP_DIR/"
+      return 1
+    fi
   elif [[ -L "$dest" ]]; then
     # It's a symlink, check if it points to our file
-    local current_target=$(readlink "$dest")
+    local current_target
+    current_target=$(readlink "$dest") || {
+      error "Failed to read symlink target for $dest"
+      return 1
+    }
+
     if [[ "$current_target" == "$src" ]]; then
       info "Link already exists: $dest -> $src"
       return 0
     else
       warn "Replacing existing symlink $dest -> $current_target"
       if [[ $BACKUP_NEEDED -eq 0 ]]; then
-        mkdir -p "$BACKUP_DIR"
+        if ! mkdir -p "$BACKUP_DIR"; then
+          error "Failed to create backup directory: $BACKUP_DIR"
+          return 1
+        fi
         BACKUP_NEEDED=1
       fi
-      cp -R "$dest" "$BACKUP_DIR/" 2>/dev/null || true
+      if ! mv "$dest" "$BACKUP_DIR/"; then
+        error "Failed to back up symlink $dest to $BACKUP_DIR/"
+        return 1
+      fi
     fi
   fi
 
   # Create the symbolic link
-  ln -sf "$src" "$dest"
+  if ! ln -sf "$src" "$dest"; then
+    error "Failed to create symlink from $src to $dest"
+    return 1
+  fi
   info "Created link: $dest -> $src"
 }
 
-# Create links for each dotfile
-link_file "$DOTFILES_DIR/.gitconfig" "$HOME/.gitconfig"
-link_file "$DOTFILES_DIR/.gitignore" "$HOME/.gitignore"
-link_file "$DOTFILES_DIR/.vimrc" "$HOME/.vimrc"
-link_file "$DOTFILES_DIR/.zprofile" "$HOME/.zprofile"
-link_file "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
+# Define core dotfiles that should always be linked
+core_dotfiles=(
+  ".gitconfig"
+  ".gitignore"
+  ".vimrc"
+  ".zprofile"
+  ".zshrc"
+)
+
+# Function to link all dotfiles in the given array
+link_dotfiles() {
+  local file_list=("$@")
+  local success_count=0
+  local fail_count=0
+
+  for file in "${file_list[@]}"; do
+    if link_file "$DOTFILES_DIR/$file" "$HOME/$file"; then
+      ((success_count++))
+    else
+      ((fail_count++))
+    fi
+  done
+
+  info "$success_count files linked successfully, $fail_count files failed"
+}
+
+# Link core dotfiles first
+info "Linking core dotfiles..."
+link_dotfiles "${core_dotfiles[@]}"
+
+# Check for additional dotfiles in the dotfiles directory
+additional_dotfiles=()
+for file in "$DOTFILES_DIR"/.[^.]* ; do
+  # Get just the filename
+  filename=$(basename "$file")
+
+  # Skip directories, git files, and files already in core_dotfiles
+  if [[ -f "$file" && "$filename" != ".git"* && ! " ${core_dotfiles[*]} " =~ " $filename " ]]; then
+    additional_dotfiles+=("$filename")
+  fi
+done
+
+# If additional dotfiles were found, ask user if they should be linked
+if [[ ${#additional_dotfiles[@]} -gt 0 ]]; then
+  echo
+  info "Found ${#additional_dotfiles[@]} additional dotfiles that aren't in the core list:"
+  printf "  %s\n" "${additional_dotfiles[@]}"
+  echo
+
+  read -p "Would you like to link these additional dotfiles? [y/N] " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    info "Linking additional dotfiles..."
+    link_dotfiles "${additional_dotfiles[@]}"
+  else
+    info "Skipping additional dotfiles"
+  fi
+fi
 
 # Display summary
 if [[ $BACKUP_NEEDED -eq 1 ]]; then
   info "Backups were created in $BACKUP_DIR"
+
+  # Count the number of backups created
+  backup_count=$(find "$BACKUP_DIR" -type f | wc -l | tr -d ' ')
+  if [[ "$backup_count" -gt 0 ]]; then
+    info "Total files backed up: $backup_count"
+    info "You can review backed up files with: ls -la $BACKUP_DIR"
+  fi
 fi
 
 info "Linking complete!"
