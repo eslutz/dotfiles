@@ -291,18 +291,6 @@ setup_node || {
 
 section "Installing developer applications..."
 
-# Function to add VS Code to PATH
-add_vscode_to_path() {
-  info "Adding VS Code to PATH..."
-  if [ -f "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]; then
-    ln -sf "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" "/usr/local/bin/code" 2>/dev/null ||
-    sudo ln -sf "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" "/usr/local/bin/code" ||
-    warn "Failed to add VS Code to PATH, but continuing"
-  else
-    warn "VS Code command-line tool not found at expected path"
-  fi
-}
-
 # Function to install Visual Studio Code
 install_vscode() {
   # Create a temporary directory for downloads
@@ -358,9 +346,12 @@ install_vscode() {
     fi
   fi
 
-  # Add VS Code to path after successful installation
-  add_vscode_to_path
   info "Visual Studio Code installed successfully."
+  info "To enable the 'code' command in terminal:"
+  info "  1. Open VS Code"
+  info "  2. Press Cmd+Shift+P"
+  info "  3. Type 'Shell Command: Install code command in PATH'"
+  info "  4. Press Enter"
 
   # We no longer need to manually clean up since trap will handle it
   # Reset the trap before returning so it doesn't fire when not needed
@@ -378,7 +369,11 @@ if [ -d "/Applications/Visual Studio Code.app" ]; then
 
   # Check if the 'code' command is available
   if ! command -v code &>/dev/null; then
-    add_vscode_to_path
+    info "To enable the 'code' command in terminal:"
+    info "  1. Open VS Code"
+    info "  2. Press Cmd+Shift+P"
+    info "  3. Type 'Shell Command: Install code command in PATH'"
+    info "  4. Press Enter"
   else
     info "VS Code command-line tool already available"
   fi
