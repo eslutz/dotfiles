@@ -432,7 +432,7 @@ install_gpg_suite() {
 
   # Install the package
   info "Installing GPG Suite (may require password)..."
-  if ! installer -pkg "/Volumes/GPG Suite/Install.pkg" -target /; then
+  if ! sudo installer -pkg "/Volumes/GPG Suite/Install.pkg" -target /; then
     error "Failed to install GPG Suite package"
     return 1
   fi
