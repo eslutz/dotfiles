@@ -20,14 +20,17 @@ if [[ -x "/opt/homebrew/bin/brew" ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
-# Force Homebrew Git to be first in PATH (takes precedence over standard Homebrew bin)
+# Homebrew Git - ensure it's first in PATH to prioritize over system Git
 path_prepend "/opt/homebrew/opt/git/bin"
+
+# Azure CLI path
+path_append "/opt/homebrew/opt/azure-cli/bin"
 
 # GPG Suite
 path_append "/usr/local/MacGPG2/bin"
 
 # .NET SDK and Tools
-# Only set this if it's not already in the environment
+# Only set DOTNET_ROOT if the directory exists and the variable isn't already set
 if [[ -d "$HOME/.dotnet" && -z "${DOTNET_ROOT}" ]]; then
   export DOTNET_ROOT="$HOME/.dotnet"
   path_append "$DOTNET_ROOT"

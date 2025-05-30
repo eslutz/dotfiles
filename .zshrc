@@ -6,7 +6,7 @@
 export GPG_TTY=$(tty)
 # NVM Configuration
 export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && . "/opt/homebrew/opt/nvm/nvm.sh"
 
 # >>> COMPLETIONS >>>
 # Homebrew completions
@@ -20,22 +20,27 @@ then
 fi
 # Enable bash compatibility
 autoload bashcompinit && bashcompinit
+# NVM completions
+[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && . "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
 # Azure completions
-source $(brew --prefix)/etc/bash_completion.d/az
+if [ -f "$(brew --prefix)/etc/bash_completion.d/az" ]; then
+  source "$(brew --prefix)/etc/bash_completion.d/az"
+fi
 # Dotnet completions
-_dotnet_zsh_complete()
-{
-  local completions=("$(dotnet complete "$words")")
-  # If the completion list is empty, just continue with filename selection
-  if [ -z "$completions" ]
-  then
-    _arguments '*::arguments: _normal'
-    return
-  fi
-  # This is not a variable assignment, don't remove spaces!
-  _values = "${(ps:\n:)completions}"
-}
-compdef _dotnet_zsh_complete dotnet
+if command -v dotnet &>/dev/null; then
+  _dotnet_zsh_complete()
+  {
+    local completions=("$(dotnet complete "$words")")
+    # If the completion list is empty, just continue with filename selection
+    if [ -z "$completions" ]
+    then
+      _arguments '*::arguments: _normal'
+      return
+    fi
+    _values = "${(ps:\n:)completions}"
+  }
+  compdef _dotnet_zsh_complete dotnet
+fi
 
 # >>> ALIASES >>>
 # Refresh source
@@ -52,4 +57,6 @@ PROMPT='%n@%m %1~${vcs_info_msg_0_} > '
 
 # >>> TOOL INTEGRATIONS >>>
 # GitHub Copilot CLI integration
-eval "$(gh copilot alias -- zsh)"
+if command -v gh &>/dev/null; then
+  gh copilot alias -- zsh > /dev/null 2>&1 && eval "$(gh copilot alias -- zsh)" || true
+fi

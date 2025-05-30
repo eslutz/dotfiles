@@ -17,8 +17,21 @@ info() {
   printf "%b\\n" "${bold}${green}[INFO]${normal} $1"
 }
 
-warn() {
-  printf "%b\\n" "${bold}${yellow}[WARN]${normal} $1"
+warn(  # Move to Applications folder
+  info "Installing Visual Studio Code to Applications folder..."
+  if ! mv "Visual Studio Code.app" "/Applications/"; then
+    error "Failed to move Visual Studio Code to Applications folder"
+    read -p "Try with sudo? [Y/n] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+      if ! sudo mv "Visual Studio Code.app" "/Applications/"; then
+        error "Failed to move Visual Studio Code to Applications folder even with sudo"
+        return 1
+      fi
+    else
+      return 1
+    fi
+  }\n" "${bold}${yellow}[WARN]${normal} $1"
 }
 
 error() {
@@ -103,6 +116,12 @@ brew_install() {
       fi
     fi
   done
+
+  if [[ ${#failed_packages[@]} -gt 0 ]]; then
+    warn "The following packages failed to install: ${failed_packages[*]}"
+    return 1
+  fi
+  return 0
 }
 
 # Core dev tools
@@ -257,6 +276,10 @@ install_vscode() {
   # Create a temporary directory for downloads
   local tmp_dir
   tmp_dir=$(mktemp -d)
+
+  # Set up trap to clean up temporary directory on exit, interrupt, or error
+  trap 'rm -rf "$tmp_dir"; info "Cleanup: Removed temporary directory for VS Code installation"' EXIT INT TERM
+
   cd "$tmp_dir" || {
     error "Failed to create temporary directory"
     return 1
@@ -307,9 +330,9 @@ install_vscode() {
   add_vscode_to_path
   info "Visual Studio Code installed successfully."
 
-  # Clean up all temporary files
-  info "Cleaning up temporary files..."
-  rm -rf "$tmp_dir"
+  # We no longer need to manually clean up since trap will handle it
+  # Reset the trap before returning so it doesn't fire when not needed
+  trap - EXIT INT TERM
   return 0
 }
 
@@ -349,6 +372,23 @@ install_gpg_suite() {
   # Create a temporary directory for downloads
   local tmp_dir
   tmp_dir=$(mktemp -d)
+
+  # Set up trap to ensure cleanup of temporary directory and possibly mounted DMG
+  trap 'cleanup_gpg_install "$tmp_dir"' EXIT INT TERM
+
+  # Define cleanup function for GPG Suite installation
+  cleanup_gpg_install() {
+    local tmp_dir=$1
+    # Attempt to detach the disk image if it's mounted
+    if mount | grep -q "/Volumes/GPG Suite"; then
+      info "Cleanup: Detaching GPG Suite disk image..."
+      hdiutil detach "/Volumes/GPG Suite" -force || true
+    fi
+    # Remove the temporary directory
+    info "Cleanup: Removing temporary directory for GPG Suite installation..."
+    rm -rf "$tmp_dir"
+  }
+
   cd "$tmp_dir" || {
     error "Failed to create temporary directory"
     return 1
@@ -358,7 +398,6 @@ install_gpg_suite() {
   # Download GPG Suite with error handling
   if ! curl -fsSL "https://releases.gpgtools.org/GPG_Suite-2023.3.dmg" -o gpgsuite.dmg; then
     error "Failed to download GPG Suite"
-    rm -rf "$tmp_dir"
     return 1
   fi
 
@@ -366,7 +405,6 @@ install_gpg_suite() {
   info "Mounting GPG Suite disk image..."
   if ! hdiutil attach gpgsuite.dmg -nobrowse; then
     error "Failed to mount GPG Suite disk image"
-    rm -rf "$tmp_dir"
     return 1
   fi
 
@@ -374,8 +412,6 @@ install_gpg_suite() {
   info "Installing GPG Suite (may require password)..."
   if ! installer -pkg "/Volumes/GPG Suite/Install.pkg" -target /; then
     error "Failed to install GPG Suite package"
-    hdiutil detach "/Volumes/GPG Suite" -force || true
-    rm -rf "$tmp_dir"
     return 1
   fi
 
@@ -386,10 +422,9 @@ install_gpg_suite() {
     hdiutil detach "/Volumes/GPG Suite" -force || true
   }
 
-  # Clean up all temporary files
-  info "Cleaning up temporary files..."
-  rm -rf "$tmp_dir"
+  # Success - we don't need to manually clean up as trap will handle it
   info "GPG Suite installed successfully."
+  trap - EXIT INT TERM
   return 0
 }
 
@@ -412,6 +447,10 @@ install_dotnet() {
   # Create a temporary directory for downloads
   local tmp_dir
   tmp_dir=$(mktemp -d)
+
+  # Set up trap to clean up temporary directory on exit, interrupt, or error
+  trap 'rm -rf "$tmp_dir"; info "Cleanup: Removed temporary directory for .NET SDK installation"' EXIT INT TERM
+
   cd "$tmp_dir" || {
     error "Failed to create temporary directory"
     return 1
@@ -421,7 +460,6 @@ install_dotnet() {
   info "Downloading .NET installation script..."
   if ! wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh 2>/dev/null; then
     error "Failed to download .NET installation script"
-    rm -rf "$tmp_dir"
     return 1
   fi
 
@@ -432,13 +470,10 @@ install_dotnet() {
   info "Installing .NET SDK..."
   if ! ./dotnet-install.sh --channel LTS; then
     error "Failed to install .NET SDK"
-    rm -rf "$tmp_dir"
     return 1
   fi
 
-  # Clean up temporary files
-  info "Cleaning up temporary files..."
-  rm -rf "$tmp_dir"
+  # We no longer need to manually clean up since trap will handle it
 
   # Check if .NET was installed successfully
   if ! command -v dotnet &>/dev/null && [ ! -f "$HOME/.dotnet/dotnet" ]; then
@@ -447,6 +482,7 @@ install_dotnet() {
   fi
 
   info ".NET SDK installed successfully"
+  trap - EXIT INT TERM
   return 0
 }
 
