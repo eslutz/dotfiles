@@ -36,6 +36,7 @@ fi
 # =============================================================================
 
 # Ask for confirmation before proceeding
+echo
 read -p "Do you want to continue with installation? [y/N] " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -50,6 +51,8 @@ fi
 section "Setting up symbolic links for dotfiles"
 if ! "$DOTFILES_DIR/scripts/create_links.sh"; then
   error "Failed to set up symbolic links"
+  # Ask if they want to continue with the rest of the installation
+  echo
   read -p "Do you want to continue with the rest of the installation? [y/N] " -n 1 -r
   echo
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -68,8 +71,8 @@ fi
 
 if [[ "$IS_MACOS" == "true" ]]; then
   section "Setting up macOS environment"
-  echo
   # Ask if they want to run the full macOS setup
+  echo
   read -p "Do you want to install CLI tools and apps for macOS? [y/N] " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -104,8 +107,8 @@ fi
 # =============================================================================
 
 section "Setup Complete"
-
 # Add option to refresh the shell config immediately
+echo
 read -p "Do you want to refresh your shell configuration now? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then

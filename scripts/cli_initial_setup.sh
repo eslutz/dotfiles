@@ -21,8 +21,6 @@ if [ "$(id -u)" -eq 0 ]; then
   exit 1
 fi
 
-section "Starting macOS development environment setup..."
-
 # =============================================================================
 # HOMEBREW INSTALLATION AND SETUP
 # =============================================================================
@@ -320,7 +318,9 @@ install_vscode() {
   # Prompt for destination
   local default_dest="/Applications"
   local dest_dir
-  read -p "Where do you want to install Visual Studio Code? [${default_dest}] " dest_dir
+  echo
+  read -r -p "Where do you want to install Visual Studio Code? [${default_dest}] " dest_dir
+  echo
   # If the user input is empty, use the default. If not absolute, prepend /Applications/
   if [[ -z "$dest_dir" ]]; then
     dest_dir="$default_dest"
@@ -342,6 +342,7 @@ install_vscode() {
   info "Moving Visual Studio Code to $dest_dir..."
   if ! mv "Visual Studio Code.app" "$dest_dir/" 2>/dev/null; then
     warn "Failed to move Visual Studio Code to $dest_dir without sudo"
+    echo
     read -p "Try with sudo? [Y/n] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
@@ -365,8 +366,6 @@ install_vscode() {
   return 0
 }
 
-section "Installing developer applications..."
-
 # =============================================================================
 # VISUAL STUDIO CODE SETUP EXECUTION
 # =============================================================================
@@ -388,6 +387,7 @@ if [ -d "/Applications/Visual Studio Code.app" ]; then
   fi
 else
   install_vscode || {
+    echo
     read -p "Continue with setup without VS Code? [Y/n] " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
@@ -484,6 +484,7 @@ install_gpg_suite() {
 
 section "Installing GPG Suite..."
 install_gpg_suite || {
+  echo
   read -p "Continue with setup without GPG Suite? [Y/n] " -n 1 -r
   echo
   if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
@@ -546,6 +547,7 @@ install_dotnet() {
 
 section "Installing .NET SDK..."
 install_dotnet || {
+  echo
   read -p "Continue with setup without .NET SDK? [Y/n] " -n 1 -r
   echo
   if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
