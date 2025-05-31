@@ -57,6 +57,21 @@ fi
 info "Homebrew setup complete"
 
 # =============================================================================
+# FIX PERMISSIONS FOR HOMEBREW DIRECTORIES (Zsh security)
+# =============================================================================
+
+section "Fixing permissions for Homebrew directories (Zsh security)..."
+# Remove group/other write permissions from /opt/homebrew/share if it exists
+info "Checking permissions for /opt/homebrew/share..."
+if [ -d "/opt/homebrew/share" ]; then
+  chmod go-w /opt/homebrew/share
+  info "Permissions set to owner-writable only (chmod go-w)"
+else
+  info "/opt/homebrew/share does not exist, skipping permission fix"
+fi
+info "Permissions fix complete"
+
+# =============================================================================
 # APPLE SILICON COMPATIBILITY
 # =============================================================================
 
