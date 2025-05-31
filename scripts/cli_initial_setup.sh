@@ -386,9 +386,21 @@ install_vscode() {
 # =============================================================================
 
 section "Installing Visual Studio Code..."
-if [ -d "/Applications/Visual Studio Code.app" ]; then
-  info "Visual Studio Code already installed"
+# Search for Visual Studio Code.app in common locations and subfolders
+vscode_app_path=""
+for base in "/Applications" "$HOME/Applications"; do
+  if [ -d "$base" ]; then
+    while IFS= read -r -d '' found; do
+      if [ -d "$found" ]; then
+        vscode_app_path="$found"
+        break 2  # Exit both loops as soon as we find the first match
+      fi
+    done < <(find "$base" -maxdepth 2 -type d \( -name "Visual Studio Code.app" -o -name "Visual Studio Code - Insiders.app" \) -print0)
+  fi
+done
 
+if [ -n "$vscode_app_path" ]; then
+  info "Visual Studio Code already installed at $vscode_app_path"
   # Check if the 'code' command is available
   if ! command -v code &>/dev/null; then
     info "VS Code 'code' command not found"

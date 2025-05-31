@@ -152,7 +152,6 @@ if [[ ${#additional_dotfiles[@]} -gt 0 ]]; then
   info "Found ${#additional_dotfiles[@]} additional dotfiles that aren't in the core list:"
   printf "  %s\n" "${additional_dotfiles[@]}"
   echo
-
   read -p "Would you like to link these additional dotfiles? [y/N] " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
