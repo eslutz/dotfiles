@@ -39,8 +39,8 @@ clean_path() {
   if [[ -n $PATH ]]; then
     local new_path=""
     local dir
-    IFS=':' read -ra ADDR <<< "$PATH"
-    for dir in "${ADDR[@]}"; do
+    IFS=':' new_path_array=($PATH)
+    for dir in "${new_path_array[@]}"; do
       if [[ -d "$dir" && ":$new_path:" != *":$dir:"* ]]; then
         if [[ -z $new_path ]]; then
           new_path="$dir"
