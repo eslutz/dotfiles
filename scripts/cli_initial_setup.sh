@@ -17,7 +17,7 @@ source "$(dirname "$0")/output_formatting.sh"
 
 # Ensure script is not run with sudo privileges
 if [ "$(id -u)" -eq 0 ]; then
-  error "This script should not be run with sudo. Please run as a regular user."
+  error "This script should not be run with sudo, please run as a regular user"
   exit 1
 fi
 
@@ -32,7 +32,7 @@ info "Checking Homebrew installation..."
 if ! command -v brew &>/dev/null; then
   info "Installing Homebrew..."
   if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
-    error "Failed to install Homebrew. Installation script returned an error."
+    error "Failed to install Homebrew, installation script returned an error"
     exit 1
   fi
 
@@ -44,7 +44,7 @@ if ! command -v brew &>/dev/null; then
     exit 1
   fi
 else
-  info "Homebrew is already installed."
+  info "Homebrew is already installed"
   # Ensure Homebrew is properly initialized for Apple Silicon Macs
   if [[ -f "/opt/homebrew/bin/brew" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -144,7 +144,7 @@ setup_github_cli() {
     fi
     info "GitHub CLI installed successfully"
   else
-    info "GitHub CLI already installed."
+    info "GitHub CLI already installed"
   fi
 
   # Check authentication status
@@ -155,21 +155,21 @@ setup_github_cli() {
       error "Failed to authenticate with GitHub CLI"
       return 1
     fi
-    info "GitHub CLI authenticated successfully."
+    info "GitHub CLI authenticated successfully"
   else
-    info "GitHub CLI already authenticated."
+    info "GitHub CLI already authenticated"
   fi
 
   # Install GitHub Copilot extension
   info "Installing GitHub Copilot extension..."
   if ! gh extension install github/gh-copilot 2>/dev/null; then
     if gh extension list | grep -q "gh-copilot"; then
-      info "GitHub Copilot extension already installed."
+      info "GitHub Copilot extension already installed"
     else
       warn "Failed to install GitHub Copilot extension, but continuing"
     fi
   else
-    info "GitHub Copilot extension installed successfully."
+    info "GitHub Copilot extension installed successfully"
   fi
 
   return 0
@@ -330,7 +330,7 @@ install_vscode() {
 
   info "Moving Visual Studio Code to $dest_dir..."
   if ! mv "Visual Studio Code.app" "$dest_dir/" 2>/dev/null; then
-    warn "Failed to move Visual Studio Code to $dest_dir without sudo."
+    warn "Failed to move Visual Studio Code to $dest_dir without sudo"
     read -p "Try with sudo? [Y/n] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
@@ -343,7 +343,7 @@ install_vscode() {
     fi
   fi
 
-  info "Visual Studio Code installed successfully."
+  info "Visual Studio Code installed successfully"
   info "To enable the 'code' command in terminal:"
   info "  1. Open VS Code"
   info "  2. Press Cmd+Shift+P"
@@ -362,7 +362,7 @@ section "Installing developer applications..."
 
 section "Installing Visual Studio Code..."
 if [ -d "/Applications/Visual Studio Code.app" ]; then
-  info "Visual Studio Code already installed."
+  info "Visual Studio Code already installed"
 
   # Check if the 'code' command is available
   if ! command -v code &>/dev/null; then
@@ -411,7 +411,7 @@ install_gpg_suite() {
 
   # Check if GPG Suite is already installed
   if [ -d "/Applications/GPG Keychain.app" ]; then
-    info "GPG Suite already installed."
+    info "GPG Suite already installed"
     return 0
   fi
 
@@ -462,7 +462,7 @@ install_gpg_suite() {
   }
 
   # Successful installation
-  info "GPG Suite installed successfully."
+  info "GPG Suite installed successfully"
   trap - EXIT INT TERM
   return 0
 }

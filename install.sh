@@ -19,7 +19,7 @@ source "$(dirname "$0")/scripts/output_formatting.sh"
 DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 section "Welcome to Dotfiles Setup"
-info "This script will set up your development environment."
+info "This script will set up your development environment"
 info "Dotfiles location: $DOTFILES_DIR"
 
 # Detect operating system
@@ -28,7 +28,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
   IS_MACOS=true
   info "macOS environment detected"
 else
-  warn "Unsupported environment. Some features may not work correctly."
+  warn "Unsupported environment. Some features may not work correctly"
 fi
 
 # =============================================================================
