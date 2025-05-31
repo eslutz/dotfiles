@@ -49,8 +49,18 @@ fi
 # =============================================================================
 
 section "Setting up symbolic links for dotfiles"
-if ! "$DOTFILES_DIR/scripts/create_links.sh"; then
+FAILURES=()  # Initialize failures array before any steps that may fail
+CREATE_LINKS_OUTPUT=$("$DOTFILES_DIR/scripts/create_links.sh" 2>&1)
+CREATE_LINKS_STATUS=$?
+if [[ $CREATE_LINKS_STATUS -ne 0 ]]; then
   error "Failed to set up symbolic links"
+  # Parse failures from output
+  while IFS= read -r line; do
+    if [[ $line == *"[FAILURE]"* ]]; then
+      FAILURES+=("${line#*] }")
+    fi
+  done <<< "$CREATE_LINKS_OUTPUT"
+  FAILURES+=("Symbolic link setup failed")
   # Ask if they want to continue with the rest of the installation
   echo
   read -p "Do you want to continue with the rest of the installation? [y/N] " -n 1 -r
@@ -62,6 +72,12 @@ if ! "$DOTFILES_DIR/scripts/create_links.sh"; then
     warn "Continuing despite symbolic link errors"
   fi
 else
+  # Still parse for any warnings/failures even if exit code is 0
+  while IFS= read -r line; do
+    if [[ $line == *"[FAILURE]"* ]]; then
+      FAILURES+=("${line#*] }")
+    fi
+  done <<< "$CREATE_LINKS_OUTPUT"
   info "Symbolic links set up successfully!"
 fi
 
@@ -76,10 +92,25 @@ if [[ "$IS_MACOS" == "true" ]]; then
   read -p "Do you want to install CLI tools and apps for macOS? [y/N] " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
-    if ! "$DOTFILES_DIR/scripts/cli_initial_setup.sh"; then
+    CLI_SETUP_OUTPUT=$("$DOTFILES_DIR/scripts/cli_initial_setup.sh" 2>&1)
+    CLI_SETUP_STATUS=$?
+    if [[ $CLI_SETUP_STATUS -ne 0 ]]; then
       error "Failed to complete macOS CLI setup"
       info "You can run the setup script later with: $DOTFILES_DIR/scripts/cli_initial_setup.sh"
+      # Parse failures from output
+      while IFS= read -r line; do
+        if [[ $line == *"[FAILURE]"* ]]; then
+          FAILURES+=("${line#*] }")
+        fi
+      done <<< "$CLI_SETUP_OUTPUT"
+      FAILURES+=("macOS CLI setup failed")
     else
+      # Still parse for any warnings/failures even if exit code is 0
+      while IFS= read -r line; do
+        if [[ $line == *"[FAILURE]"* ]]; then
+          FAILURES+=("${line#*] }")
+        fi
+      done <<< "$CLI_SETUP_OUTPUT"
       info "macOS CLI setup completed successfully!"
     fi
   else
@@ -89,10 +120,11 @@ if [[ "$IS_MACOS" == "true" ]]; then
 fi
 
 # =============================================================================
-# BACKUP INFORMATION
+# INSTALLATION SUMMARY
 # =============================================================================
 
-# Check for backup files and inform user
+section "Installation Summary"
+# Show backup info if present
 BACKUP_DIR_BASE="$HOME/.dotfiles_backup"
 if [[ -d "$BACKUP_DIR_BASE" ]]; then
   LATEST_BACKUP=$(find "$BACKUP_DIR_BASE" -maxdepth 1 -type d | sort -r | head -n1)
@@ -100,6 +132,14 @@ if [[ -d "$BACKUP_DIR_BASE" ]]; then
     info "Backup of original files was created at: $LATEST_BACKUP"
     info "To restore backups: cp -r $LATEST_BACKUP/* $HOME/"
   fi
+fi
+
+# Display any tracked failures if present
+if [[ ${#FAILURES[@]} -gt 0 ]]; then
+  warn "Some steps failed during installation:"
+  for fail in "${FAILURES[@]}"; do
+    error "$fail"
+  done
 fi
 
 # =============================================================================

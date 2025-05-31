@@ -10,6 +10,7 @@ green="\033[32m"
 blue="\033[34m"
 yellow="\033[33m"
 red="\033[31m"
+orange="\033[38;5;208m"
 normal="\033[0m"
 
 # Output helper functions
@@ -22,7 +23,11 @@ warn() {
 }
 
 error() {
-  printf "%b\\n" "${bold}${red}[ERROR]${normal} $1"
+  printf "%b\n" "${bold}${orange}[ERROR]${normal} $1"
+}
+
+failure() {
+  printf "%b\n" "${bold}${red}[FAILURE]${normal} $1"
 }
 
 section() {

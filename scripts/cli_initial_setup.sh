@@ -106,13 +106,11 @@ brew_install() {
     if [[ "$pkg_type" == "cask" ]]; then
       info "Installing $package (cask)..."
       if ! brew install --cask "$package"; then
-        warn "Failed to install $package (cask)"
         failed_packages+=("$package")
       fi
     else
       info "Installing $package (formula)..."
       if ! brew install "$package"; then
-        warn "Failed to install $package (formula)"
         failed_packages+=("$package")
       fi
     fi
@@ -120,6 +118,9 @@ brew_install() {
 
   if [[ ${#failed_packages[@]} -gt 0 ]]; then
     warn "The following packages failed to install: ${failed_packages[*]}"
+    for fail in "${failed_packages[@]}"; do
+      failure "Failed to install $pkg_type $fail"
+    done
     return 1
   fi
   return 0
@@ -152,7 +153,7 @@ setup_github_cli() {
   if ! command -v gh &>/dev/null; then
     info "Installing GitHub CLI..."
     if ! brew install gh; then
-      error "Failed to install GitHub CLI"
+      echo "FAILURE: Failed to install GitHub CLI"
       return 1
     fi
     info "GitHub CLI installed successfully"
@@ -165,7 +166,7 @@ setup_github_cli() {
   if ! gh auth status &>/dev/null; then
     info "GitHub CLI not authenticated. Starting login process..."
     if ! gh auth login; then
-      error "Failed to authenticate with GitHub CLI"
+      echo "FAILURE: GitHub CLI authentication failed"
       return 1
     fi
     info "GitHub CLI authenticated successfully"
@@ -180,6 +181,7 @@ setup_github_cli() {
       info "GitHub Copilot extension already installed"
     else
       warn "Failed to install GitHub Copilot extension, but continuing"
+      echo "FAILURE: Failed to install GitHub Copilot extension"
     fi
   else
     info "GitHub Copilot extension installed successfully"
@@ -289,6 +291,7 @@ section "Setting up Node.js environment..."
 setup_node || {
   warn "Node.js setup failed, but continuing with other installations"
   info "You can try setting up Node.js later by running 'nvm install --lts'"
+  failure "Node.js setup failed"
 }
 info "Node.js environment setup complete"
 
@@ -414,14 +417,8 @@ if [ -n "$vscode_app_path" ]; then
   fi
 else
   install_vscode || {
-    echo
-    read -p "Continue with setup without VS Code? [Y/n] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
-      exit 1
-    else
-      info "Continuing without VS Code"
-    fi
+    warn "Visual Studio Code installation failed, but continuing"
+    failure "Visual Studio Code installation failed"
   }
 fi
 info "Visual Studio Code setup complete"
@@ -510,17 +507,12 @@ install_gpg_suite() {
 # =============================================================================
 
 section "Installing GPG Suite..."
-install_gpg_suite || {
-  echo
-  read -p "Continue with setup without GPG Suite? [Y/n] " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
-    exit 1
-  else
-    info "Continuing without GPG Suite"
-  fi
-}
-info "GPG Suite setup complete"
+if ! install_gpg_suite; then
+  warn "GPG Suite installation failed, but continuing"
+  failure "GPG Suite installation failed"
+else
+  info "GPG Suite setup complete"
+fi
 
 # =============================================================================
 # .NET SDK INSTALLATION FUNCTIONS
@@ -573,14 +565,9 @@ install_dotnet() {
 # =============================================================================
 
 section "Installing .NET SDK..."
-install_dotnet || {
-  echo
-  read -p "Continue with setup without .NET SDK? [Y/n] " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
-    exit 1
-  else
-    info "Continuing without .NET SDK"
-  fi
-}
-info ".NET SDK setup complete"
+if ! install_dotnet; then
+  warn ".NET SDK installation failed, but continuing"
+  failure ".NET SDK installation failed"
+else
+  info ".NET SDK setup complete"
+fi

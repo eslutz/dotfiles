@@ -114,16 +114,22 @@ link_dotfiles() {
   local file_list=("$@")
   local success_count=0
   local fail_count=0
+  local failures=()
 
   for file in "${file_list[@]}"; do
     if link_file "$DOTFILES_DIR/$file" "$HOME/$file"; then
       ((success_count++))
     else
       ((fail_count++))
+      failures+=("Failed to link $file")
     fi
   done
 
   info "$success_count files linked successfully, $fail_count files failed"
+  # Print failures in a parseable way for install.sh
+  for fail in "${failures[@]}"; do
+    failure "$fail"
+  done
 }
 
 # =============================================================================
