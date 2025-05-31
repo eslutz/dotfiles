@@ -103,40 +103,8 @@ if [[ -d "$BACKUP_DIR_BASE" ]]; then
 fi
 
 # =============================================================================
-# SETUP COMPLETION AND SHELL REFRESH
+# SETUP COMPLETION
 # =============================================================================
 
 section "Setup Complete"
-# Add option to refresh the shell config immediately
-echo
-read -p "Do you want to refresh your shell configuration now? [y/N] " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-  # Determine which shell configuration file to source
-  SHELL_CONFIG=""
-
-  if [[ -f "$HOME/.zshrc" && "$SHELL" == *"zsh"* ]]; then
-    SHELL_CONFIG="$HOME/.zshrc"
-  elif [[ -f "$HOME/.zprofile" && "$SHELL" == *"zsh"* ]]; then
-    SHELL_CONFIG="$HOME/.zprofile"
-  elif [[ -f "$HOME/.bashrc" && "$SHELL" == *"bash"* ]]; then
-    SHELL_CONFIG="$HOME/.bashrc"
-  elif [[ -f "$HOME/.bash_profile" && "$SHELL" == *"bash"* ]]; then
-    SHELL_CONFIG="$HOME/.bash_profile"
-  elif [[ -f "$HOME/.profile" ]]; then
-    SHELL_CONFIG="$HOME/.profile"
-  fi
-
-  if [[ -n "$SHELL_CONFIG" ]]; then
-    info "Sourcing $SHELL_CONFIG"
-    # shellcheck disable=SC1090
-    source "$SHELL_CONFIG" 2>/dev/null || {
-      warn "Could not source $SHELL_CONFIG directly"
-      info "Please run the following manually to apply changes:"
-      info "    source $SHELL_CONFIG"
-    }
-  else
-    warn "Could not determine the appropriate configuration file to source"
-    info "Please restart your terminal to apply all changes"
-  fi
-fi
+info "To apply all changes, please restart your terminal or quit and open a new shell session."
