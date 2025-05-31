@@ -20,41 +20,58 @@ if [ "$(id -u)" -eq 0 ]; then
   error "This script should not be run with sudo, please run as a regular user"
   exit 1
 fi
+# =============================================================================
+# GLOBAL VARIABLES
+# =============================================================================
+
+SETUP_FAILURES=()  # Initialize failures array to track setup issues
 
 # =============================================================================
 # HOMEBREW INSTALLATION AND SETUP
 # =============================================================================
 
-section "Setting up Homebrew..."
-info "Checking Homebrew installation..."
-if ! command -v brew &>/dev/null; then
-  info "Installing Homebrew..."
-  if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
-    error "Failed to install Homebrew, installation script returned an error"
-    exit 1
-  fi
+setup_homebrew() {
+  info "Checking Homebrew installation..."
+  if ! command -v brew &>/dev/null; then
+    info "Installing Homebrew..."
+    if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
+      error "Failed to install Homebrew, installation script returned an error"
+      return 1
+    fi
 
-  # Initialize Homebrew for Apple Silicon Macs
-  if [[ -f "/opt/homebrew/bin/brew" ]]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
+    # Initialize Homebrew for Apple Silicon Macs
+    if [[ -f "/opt/homebrew/bin/brew" ]]; then
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    else
+      error "Homebrew was installed but brew command not found at /opt/homebrew/bin/brew"
+      return 1
+    fi
   else
-    error "Homebrew was installed but brew command not found at /opt/homebrew/bin/brew"
-    exit 1
+    info "Homebrew is already installed"
+    # Ensure Homebrew is properly initialized for Apple Silicon Macs
+    if [[ -f "/opt/homebrew/bin/brew" ]]; then
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
   fi
-else
-  info "Homebrew is already installed"
-  # Ensure Homebrew is properly initialized for Apple Silicon Macs
-  if [[ -f "/opt/homebrew/bin/brew" ]]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-  fi
-fi
 
-# Verify Homebrew is working correctly
-if ! command -v brew &>/dev/null; then
-  error "Homebrew installation failed or PATH not set correctly"
-  exit 1
-fi
-info "Homebrew setup complete"
+  # Verify Homebrew is working correctly
+  if ! command -v brew &>/dev/null; then
+    error "Homebrew installation failed or PATH not set correctly"
+    return 1
+  fi
+  info "Homebrew setup complete"
+  return 0
+}
+
+# =============================================================================
+# HOMEBREW SETUP EXECUTION
+# =============================================================================
+
+section "Setting up Homebrew..."
+setup_homebrew || {
+  warn "Homebrew setup failed, but continuing"
+  SETUP_FAILURES+=("Homebrew")
+}
 
 # =============================================================================
 # FIX PERMISSIONS FOR HOMEBREW DIRECTORIES (Zsh security)
@@ -64,7 +81,10 @@ section "Fixing permissions for Homebrew directories (Zsh security)..."
 # Remove group/other write permissions from /opt/homebrew/share if it exists
 info "Checking permissions for /opt/homebrew/share..."
 if [ -d "/opt/homebrew/share" ]; then
-  chmod go-w /opt/homebrew/share
+  chmod go-w /opt/homebrew/share || {
+    warn "Failed to set permissions on /opt/homebrew/share, continuing"
+    SETUP_FAILURES+=("Homebrew share permissions")
+  }
   info "Permissions set to owner-writable only (chmod go-w)"
 else
   info "/opt/homebrew/share does not exist, skipping permission fix"
@@ -81,7 +101,10 @@ info "Checking for Rosetta 2 installation..."
 if [[ "$(uname -m)" == "arm64" ]]; then
   if ! pgrep -q oahd; then
     info "Installing Rosetta 2 (needed for some Intel-based apps)..."
-    softwareupdate --install-rosetta --agree-to-license
+    softwareupdate --install-rosetta --agree-to-license || {
+      error "Failed to install Rosetta 2"
+      SETUP_FAILURES+=("Rosetta 2")
+    }
   else
     info "Rosetta 2 already installed"
   fi
@@ -100,28 +123,23 @@ brew_install() {
   local pkg_type="$1"
   shift
   local packages=("$@")
-  local failed_packages=()
 
   for package in "${packages[@]}"; do
     if [[ "$pkg_type" == "cask" ]]; then
       info "Installing $package (cask)..."
       if ! brew install --cask "$package"; then
         warn "Failed to install $package (cask)"
-        failed_packages+=("$package")
+        SETUP_FAILURES+=("$package (cask)")
       fi
     else
       info "Installing $package (formula)..."
       if ! brew install "$package"; then
         warn "Failed to install $package (formula)"
-        failed_packages+=("$package")
+        SETUP_FAILURES+=("$package (formula)")
       fi
     fi
   done
 
-  if [[ ${#failed_packages[@]} -gt 0 ]]; then
-    warn "The following packages failed to install: ${failed_packages[*]}"
-    return 1
-  fi
   return 0
 }
 
@@ -130,16 +148,20 @@ brew_install() {
 # =============================================================================
 
 section "Installing Brew packages..."
-# Define package lists
-formulas=(git azure-cli wget curl jq tree htop)
-casks=(powershell font-monaspace)
+if ! command -v brew &>/dev/null; then
+  warn "Homebrew is not installed or not available in PATH, skipping Brew package installations"
+else
+  # Define package lists
+  formulas=(git azure-cli wget curl jq tree htop)
+  casks=(powershell font-monaspace)
 
-info "Installing formulas..."
-brew_install "formula" "${formulas[@]}"
+  info "Installing formulas..."
+  brew_install "formula" "${formulas[@]}"
 
-info "Installing casks..."
-brew_install "cask" "${casks[@]}"
-info "Brew package installation complete"
+  info "Installing casks..."
+  brew_install "cask" "${casks[@]}"
+  info "Brew package installation complete"
+fi
 
 # =============================================================================
 # GITHUB CLI SETUP FUNCTIONS
@@ -148,44 +170,56 @@ info "Brew package installation complete"
 # Function to setup GitHub CLI with authentication and extensions
 # Installs GitHub CLI, authenticates user, and installs Copilot extension
 setup_github_cli() {
+  local success=0
+
   # Install GitHub CLI if not already installed
   if ! command -v gh &>/dev/null; then
     info "Installing GitHub CLI..."
     if ! brew install gh; then
-      error "Failed to install GitHub CLI"
-      return 1
+      warn "Failed to install GitHub CLI"
+      SETUP_FAILURES+=("GitHub CLI")
+      success=1
+    else
+      info "GitHub CLI installed successfully"
     fi
-    info "GitHub CLI installed successfully"
   else
     info "GitHub CLI already installed"
   fi
 
   # Check authentication status
-  info "Checking GitHub CLI authentication..."
-  if ! gh auth status &>/dev/null; then
-    info "GitHub CLI not authenticated. Starting login process..."
-    if ! gh auth login; then
-      error "Failed to authenticate with GitHub CLI"
-      return 1
+  if [ $success -eq 0 ]; then
+    info "Checking GitHub CLI authentication..."
+    if ! gh auth status &>/dev/null; then
+      info "GitHub CLI not authenticated. Starting login process..."
+      if ! gh auth login; then
+        error "Failed to authenticate with GitHub CLI"
+        SETUP_FAILURES+=("GitHub CLI authentication")
+        success=1
+      else
+        info "GitHub CLI authenticated successfully"
+      fi
+    else
+      info "GitHub CLI already authenticated"
     fi
-    info "GitHub CLI authenticated successfully"
-  else
-    info "GitHub CLI already authenticated"
   fi
 
   # Install GitHub Copilot extension
-  info "Installing GitHub Copilot extension..."
-  if ! gh extension install github/gh-copilot 2>/dev/null; then
+  if [ $success -eq 0 ]; then
+    info "Installing GitHub Copilot extension..."
     if gh extension list | grep -q "gh-copilot"; then
       info "GitHub Copilot extension already installed"
     else
-      warn "Failed to install GitHub Copilot extension, but continuing"
+      if ! gh extension install github/gh-copilot 2>/dev/null; then
+        error "Failed to install GitHub Copilot extension"
+        SETUP_FAILURES+=("GitHub CLI Copilot extension")
+        success=1
+      else
+        info "GitHub Copilot extension installed successfully"
+      fi
     fi
-  else
-    info "GitHub Copilot extension installed successfully"
   fi
 
-  return 0
+  return $success
 }
 
 # =============================================================================
@@ -194,7 +228,7 @@ setup_github_cli() {
 
 section "Setting up GitHub CLI..."
 setup_github_cli || {
-  warn "GitHub CLI setup failed, but continuing with other installations"
+  warn "GitHub CLI setup failed, but continuing"
   info "You can try setting up GitHub CLI later by running 'gh auth login'"
   info "To install the GitHub Copilot CLI extension, run 'gh extension install github/gh-copilot'"
 }
@@ -207,6 +241,7 @@ info "GitHub CLI setup complete"
 # Function to setup and configure Node.js via NVM
 # Installs NVM via Homebrew and sets up the latest LTS Node.js version
 setup_node() {
+  local shell_profile success=0
   local nvm_dir="$HOME/.nvm"
   export NVM_DIR="$nvm_dir"
 
@@ -218,9 +253,11 @@ setup_node() {
     info "Installing NVM via Homebrew..."
     if ! brew install nvm; then
       error "Failed to install NVM via Homebrew"
-      return 1
+      SETUP_FAILURES+=("NVM")
+      success=1
+    else
+      info "NVM installed successfully via Homebrew"
     fi
-    info "NVM installed successfully via Homebrew"
   else
     info "NVM already installed via Homebrew"
   fi
@@ -232,7 +269,6 @@ setup_node() {
     info "Using NVM installed via Homebrew"
 
     # Ensure NVM sourcing is in shell profile for future sessions
-    local shell_profile
     if [[ "$SHELL" == *"zsh"* ]]; then
       shell_profile="$HOME/.zshrc"
     elif [[ "$SHELL" == *"bash"* ]]; then
@@ -250,35 +286,32 @@ setup_node() {
       info "Installing latest LTS version of Node.js..."
       if ! nvm install --lts; then
         error "Failed to install Node.js LTS version"
-        return 1
-      fi
-
-      # Set LTS as default
-      info "Setting Node.js LTS version as default..."
-      if ! nvm use --lts; then
-        warn "Failed to use LTS version, but continuing"
-      fi
-
-      if ! nvm alias default 'lts/*'; then
-        warn "Failed to set default Node.js version, but continuing"
-      fi
-
-      # Verify node is properly installed
-      if command -v node &>/dev/null; then
-        info "Node.js $(node -v) installed and set as default"
-        return 0
+        SETUP_FAILURES+=("Node.js")
+        success=1
       else
-        error "Node.js command not available after installation"
-        return 1
+        info "Setting Node.js LTS version as default..."
+        nvm use --lts || warn "Failed to use LTS version, but continuing"
+        nvm alias default 'lts/*' || warn "Failed to set default Node.js version, but continuing"
+        if command -v node &>/dev/null; then
+          info "Node.js $(node -v) installed and set as default"
+        else
+          error "Node.js command not available after installation"
+          SETUP_FAILURES+=("Node.js")
+          success=1
+        fi
       fi
     else
       error "NVM script sourced but command not available"
-      return 1
+      SETUP_FAILURES+=("Node.js")
+      success=1
     fi
   else
     warn "NVM not found. Please ensure Homebrew installation was successful"
-    return 1
+    SETUP_FAILURES+=("NVM")
+    success=1
   fi
+
+  return $success
 }
 
 # =============================================================================
@@ -287,7 +320,7 @@ setup_node() {
 
 section "Setting up Node.js environment..."
 setup_node || {
-  warn "Node.js setup failed, but continuing with other installations"
+  warn "Node.js setup failed, but continuing"
   info "You can try setting up Node.js later by running 'nvm install --lts'"
 }
 info "Node.js environment setup complete"
@@ -370,12 +403,14 @@ install_vscode() {
     fi
   fi
 
-  info "Visual Studio Code installed successfully"
-  info "To enable the 'code' command in terminal:"
-  info "  1. Open VS Code"
-  info "  2. Press Cmd+Shift+P"
-  info "  3. Type 'Shell Command: Install code command in PATH'"
-  info "  4. Press Enter"
+  if [ "$success" -eq 0 ]; then
+    info "Visual Studio Code installed successfully"
+    info "To enable the 'code' command in terminal:"
+    info "  1. Open VS Code"
+    info "  2. Press Cmd+Shift+P"
+    info "  3. Type 'Shell Command: Install code command in PATH'"
+    info "  4. Press Enter"
+  fi
 
   trap - EXIT INT TERM
   return 0
@@ -414,14 +449,8 @@ if [ -n "$vscode_app_path" ]; then
   fi
 else
   install_vscode || {
-    echo
-    read -p "Continue with setup without VS Code? [Y/n] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
-      exit 1
-    else
-      info "Continuing without VS Code"
-    fi
+    warn "Visual Studio Code installation failed, but continuing"
+    SETUP_FAILURES+=("Visual Studio Code")
   }
 fi
 info "Visual Studio Code setup complete"
@@ -436,7 +465,11 @@ cleanup_gpg_install() {
   # Attempt to detach the disk image if it's mounted
   if mount | grep -q "/Volumes/GPG Suite"; then
     info "Cleanup: Detaching GPG Suite disk image..."
-    hdiutil detach "/Volumes/GPG Suite" -force || true
+    hdiutil detach "/Volumes/GPG Suite" -force || {
+      warn "Could not detach GPG Suite disk image. Will try to force unmount with a delay..."
+      sleep 2
+      hdiutil detach "/Volumes/GPG Suite" -force || true
+    }
   fi
   # Remove the temporary directory
   info "Cleanup: Removing temporary directory for GPG Suite installation..."
@@ -446,6 +479,7 @@ cleanup_gpg_install() {
 # Function to install GPG Suite
 install_gpg_suite() {
   info "Installing GPG Suite..."
+  local success=0
 
   # Check if GPG Suite is already installed
   if [ -d "/Applications/GPG Keychain.app" ]; then
@@ -462,47 +496,47 @@ install_gpg_suite() {
 
   cd "$tmp_dir" || {
     error "Failed to create temporary directory"
-    return 1
+    success=1
   }
 
-  info "Downloading GPG Suite..."
-  # Dynamically resolve the latest GPG Suite DMG URL via HTTP redirect
-  latest_gpgsuite_url=$(curl -fsIL https://gpgtools.org/download | awk -F' ' '/^location: /{print $2}' | tail -1 | tr -d '\r')
-  if [[ -z "$latest_gpgsuite_url" ]]; then
-    error "Could not determine the latest GPG Suite download URL"
-    return 1
-  fi
-  info "Downloading GPG Suite from $latest_gpgsuite_url..."
-  if ! curl -fsSL "$latest_gpgsuite_url" -o gpgsuite.dmg; then
-    error "Failed to download GPG Suite"
-    return 1
-  fi
-
-  # Mount the DMG
-  info "Mounting GPG Suite disk image..."
-  if ! hdiutil attach gpgsuite.dmg -nobrowse; then
-    error "Failed to mount GPG Suite disk image"
-    return 1
+  if [ $success -eq 0 ]; then
+    info "Downloading GPG Suite..."
+    # Dynamically resolve the latest GPG Suite DMG URL via HTTP redirect
+    latest_gpgsuite_url=$(curl -fsIL https://gpgtools.org/download | awk -F' ' '/^location: /{print $2}' | tail -1 | tr -d '\r')
+    if [[ -z "$latest_gpgsuite_url" ]]; then
+      error "Could not determine the latest GPG Suite download URL"
+      success=1
+    else
+      info "Downloading GPG Suite from $latest_gpgsuite_url..."
+      if ! curl -fsSL "$latest_gpgsuite_url" -o gpgsuite.dmg; then
+        error "Failed to download GPG Suite"
+        success=1
+      fi
+    fi
   fi
 
-  # Install the package
-  info "Installing GPG Suite..."
-  if ! sudo installer -pkg "/Volumes/GPG Suite/Install.pkg" -target /; then
-    error "Failed to install GPG Suite package"
-    return 1
+  if [ $success -eq 0 ]; then
+    info "Mounting GPG Suite disk image..."
+    if ! hdiutil attach gpgsuite.dmg -nobrowse; then
+      error "Failed to mount GPG Suite disk image"
+      success=1
+    fi
   fi
 
-  # Unmount the DMG
-  hdiutil detach "/Volumes/GPG Suite" -force || {
-    warn "Could not detach GPG Suite disk image. Will try to force unmount with a delay..."
-    sleep 2
-    hdiutil detach "/Volumes/GPG Suite" -force || true
-  }
+  if [ $success -eq 0 ]; then
+    info "Installing GPG Suite..."
+    if ! sudo installer -pkg "/Volumes/GPG Suite/Install.pkg" -target /; then
+      error "Failed to install GPG Suite package"
+      success=1
+    fi
+  fi
 
-  # Successful installation
-  info "GPG Suite installed successfully"
+  if [ $success -eq 0 ]; then
+    info "GPG Suite installed successfully"
+  fi
+
   trap - EXIT INT TERM
-  return 0
+  return $success
 }
 
 # =============================================================================
@@ -510,17 +544,12 @@ install_gpg_suite() {
 # =============================================================================
 
 section "Installing GPG Suite..."
-install_gpg_suite || {
-  echo
-  read -p "Continue with setup without GPG Suite? [Y/n] " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
-    exit 1
-  else
-    info "Continuing without GPG Suite"
-  fi
-}
-info "GPG Suite setup complete"
+if ! install_gpg_suite; then
+  warn "GPG Suite installation failed, but continuing"
+  SETUP_FAILURES+=("GPG Suite")
+else
+  info "GPG Suite setup complete"
+fi
 
 # =============================================================================
 # .NET SDK INSTALLATION FUNCTIONS
@@ -573,14 +602,23 @@ install_dotnet() {
 # =============================================================================
 
 section "Installing .NET SDK..."
-install_dotnet || {
-  echo
-  read -p "Continue with setup without .NET SDK? [Y/n] " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
-    exit 1
-  else
-    info "Continuing without .NET SDK"
-  fi
-}
-info ".NET SDK setup complete"
+if ! install_dotnet; then
+  warn ".NET SDK installation failed, but continuing"
+  SETUP_FAILURES+=(".NET SDK")
+else
+  info ".NET SDK setup complete"
+fi
+
+# =============================================================================
+# FAILURE SUMMARY
+# =============================================================================
+
+section "Setup Summary"
+if [ ${#SETUP_FAILURES[@]} -gt 0 ]; then
+  warn "Some setup steps failed to complete successfully:"
+  for failure in "${SETUP_FAILURES[@]}"; do
+    error "$failure"
+  done
+else
+  info "All setup steps completed successfully!"
+fi
