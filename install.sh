@@ -55,7 +55,10 @@ CREATE_LINKS_STATUS=0
 CREATE_LINKS_OUTPUT_TMP=$("$DOTFILES_DIR/scripts/create_links.sh" 2>&1)
 CREATE_LINKS_STATUS=$?
 CREATE_LINKS_OUTPUT="$CREATE_LINKS_OUTPUT_TMP"
-echo "$CREATE_LINKS_OUTPUT"
+# Print output line by line to ensure all output is flushed to the terminal
+while IFS= read -r line; do
+  printf '%s\n' "$line"
+done <<< "$CREATE_LINKS_OUTPUT"
 if [[ $CREATE_LINKS_STATUS -ne 0 ]]; then
   error "Failed to set up symbolic links"
   # Parse failures from output
@@ -101,7 +104,9 @@ if [[ "$IS_MACOS" == "true" ]]; then
     CLI_SETUP_OUTPUT_TMP=$("$DOTFILES_DIR/scripts/cli_initial_setup.sh" 2>&1)
     CLI_SETUP_STATUS=$?
     CLI_SETUP_OUTPUT="$CLI_SETUP_OUTPUT_TMP"
-    echo "$CLI_SETUP_OUTPUT"
+    while IFS= read -r line; do
+      printf '%s\n' "$line"
+    done <<< "$CLI_SETUP_OUTPUT"
     if [[ $CLI_SETUP_STATUS -ne 0 ]]; then
       error "Failed to complete macOS CLI setup"
       info "You can run the setup script later with: $DOTFILES_DIR/scripts/cli_initial_setup.sh"
