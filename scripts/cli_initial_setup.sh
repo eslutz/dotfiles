@@ -328,6 +328,17 @@ install_vscode() {
     dest_dir="$default_dest/$dest_dir"
   fi
 
+  # Ensure the destination directory exists
+  if [[ ! -d "$dest_dir" ]]; then
+    info "Creating destination directory: $dest_dir"
+    if ! mkdir -p "$dest_dir"; then
+      error "Failed to create destination directory: $dest_dir"
+      return 1
+    fi
+  else
+    info "Destination directory exists: $dest_dir"
+  fi
+
   info "Moving Visual Studio Code to $dest_dir..."
   if ! mv "Visual Studio Code.app" "$dest_dir/" 2>/dev/null; then
     warn "Failed to move Visual Studio Code to $dest_dir without sudo"
