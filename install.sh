@@ -50,8 +50,12 @@ fi
 
 section "Setting up symbolic links for dotfiles"
 FAILURES=()  # Initialize failures array before any steps that may fail
-CREATE_LINKS_OUTPUT=$("$DOTFILES_DIR/scripts/create_links.sh" 2>&1)
+CREATE_LINKS_OUTPUT=""
+CREATE_LINKS_STATUS=0
+CREATE_LINKS_OUTPUT_TMP=$("$DOTFILES_DIR/scripts/create_links.sh" 2>&1)
 CREATE_LINKS_STATUS=$?
+CREATE_LINKS_OUTPUT="$CREATE_LINKS_OUTPUT_TMP"
+echo "$CREATE_LINKS_OUTPUT"
 if [[ $CREATE_LINKS_STATUS -ne 0 ]]; then
   error "Failed to set up symbolic links"
   # Parse failures from output
@@ -92,8 +96,12 @@ if [[ "$IS_MACOS" == "true" ]]; then
   read -p "Do you want to install CLI tools and apps for macOS? [y/N] " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
-    CLI_SETUP_OUTPUT=$("$DOTFILES_DIR/scripts/cli_initial_setup.sh" 2>&1)
+    CLI_SETUP_OUTPUT=""
+    CLI_SETUP_STATUS=0
+    CLI_SETUP_OUTPUT_TMP=$("$DOTFILES_DIR/scripts/cli_initial_setup.sh" 2>&1)
     CLI_SETUP_STATUS=$?
+    CLI_SETUP_OUTPUT="$CLI_SETUP_OUTPUT_TMP"
+    echo "$CLI_SETUP_OUTPUT"
     if [[ $CLI_SETUP_STATUS -ne 0 ]]; then
       error "Failed to complete macOS CLI setup"
       info "You can run the setup script later with: $DOTFILES_DIR/scripts/cli_initial_setup.sh"
