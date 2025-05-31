@@ -19,8 +19,6 @@ source "$(dirname "$0")/output_formatting.sh"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 DOTFILES_DIR="$(dirname "$SCRIPT_DIR")"
 
-section "Starting dotfile linking from $DOTFILES_DIR..."
-
 # =============================================================================
 # BACKUP CONFIGURATION
 # =============================================================================
