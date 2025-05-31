@@ -56,6 +56,7 @@ if ! command -v brew &>/dev/null; then
   error "Homebrew installation failed or PATH not set correctly"
   exit 1
 fi
+info "Homebrew setup complete"
 
 # =============================================================================
 # APPLE SILICON COMPATIBILITY
@@ -72,6 +73,7 @@ if [[ "$(uname -m)" == "arm64" ]]; then
     info "Rosetta 2 already installed"
   fi
 fi
+info "Apple Silicon compatibility check complete"
 
 # =============================================================================
 # PACKAGE INSTALLATION UTILITIES
@@ -124,6 +126,7 @@ brew_install "formula" "${formulas[@]}"
 
 info "Installing casks..."
 brew_install "cask" "${casks[@]}"
+info "Brew package installation complete"
 
 # =============================================================================
 # GITHUB CLI SETUP FUNCTIONS
@@ -182,6 +185,7 @@ setup_github_cli || {
   info "You can try setting up GitHub CLI later by running 'gh auth login'"
   info "To install the GitHub Copilot CLI extension, run 'gh extension install github/gh-copilot'"
 }
+info "GitHub CLI setup complete"
 
 # =============================================================================
 # NODE.JS SETUP FUNCTIONS
@@ -237,6 +241,7 @@ setup_node() {
       fi
 
       # Set LTS as default
+      info "Setting Node.js LTS version as default..."
       if ! nvm use --lts; then
         warn "Failed to use LTS version, but continuing"
       fi
@@ -272,6 +277,7 @@ setup_node || {
   warn "Node.js setup failed, but continuing with other installations"
   info "You can try setting up Node.js later by running 'nvm install --lts'"
 }
+info "Node.js environment setup complete"
 
 # =============================================================================
 # VISUAL STUDIO CODE INSTALLATION FUNCTIONS
@@ -295,7 +301,6 @@ install_vscode() {
   # Download VS Code with error handling
   if ! curl -fsSL "https://code.visualstudio.com/sha/download?build=stable&os=darwin-universal" -o vscode.zip; then
     error "Failed to download Visual Studio Code"
-    rm -rf "$tmp_dir"
     return 1
   fi
 
@@ -303,31 +308,37 @@ install_vscode() {
   info "Extracting Visual Studio Code..."
   if ! unzip -q vscode.zip; then
     error "Failed to extract Visual Studio Code"
-    rm -rf "$tmp_dir"
     return 1
   fi
 
   # Check if VS Code was extracted correctly
   if [ ! -d "Visual Studio Code.app" ]; then
     error "Visual Studio Code.app not found after extraction"
-    rm -rf "$tmp_dir"
     return 1
   fi
 
-  # Move to Applications folder
-  info "Installing Visual Studio Code to Applications folder..."
-  if ! mv "Visual Studio Code.app" "/Applications/"; then
-    error "Failed to move Visual Studio Code to Applications folder"
+  # Prompt for destination
+  local default_dest="/Applications"
+  local dest_dir
+  read -p "Where do you want to install Visual Studio Code? [${default_dest}] " dest_dir
+  # If the user input is empty, use the default. If not absolute, prepend /Applications/
+  if [[ -z "$dest_dir" ]]; then
+    dest_dir="$default_dest"
+  elif [[ "$dest_dir" != /* ]]; then
+    dest_dir="$default_dest/$dest_dir"
+  fi
+
+  info "Moving Visual Studio Code to $dest_dir..."
+  if ! mv "Visual Studio Code.app" "$dest_dir/" 2>/dev/null; then
+    warn "Failed to move Visual Studio Code to $dest_dir without sudo."
     read -p "Try with sudo? [Y/n] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-      if ! sudo mv "Visual Studio Code.app" "/Applications/"; then
-        error "Failed to move Visual Studio Code to Applications folder even with sudo"
-        rm -rf "$tmp_dir"
+      if ! sudo mv "Visual Studio Code.app" "$dest_dir/"; then
+        error "Failed to move Visual Studio Code to $dest_dir even with sudo"
         return 1
       fi
     else
-      rm -rf "$tmp_dir"
       return 1
     fi
   fi
@@ -339,8 +350,6 @@ install_vscode() {
   info "  3. Type 'Shell Command: Install code command in PATH'"
   info "  4. Press Enter"
 
-  # We no longer need to manually clean up since trap will handle it
-  # Reset the trap before returning so it doesn't fire when not needed
   trap - EXIT INT TERM
   return 0
 }
@@ -357,6 +366,7 @@ if [ -d "/Applications/Visual Studio Code.app" ]; then
 
   # Check if the 'code' command is available
   if ! command -v code &>/dev/null; then
+    info "VS Code 'code' command not found"
     info "To enable the 'code' command in terminal:"
     info "  1. Open VS Code"
     info "  2. Press Cmd+Shift+P"
@@ -376,6 +386,7 @@ else
     fi
   }
 fi
+info "Visual Studio Code setup complete"
 
 # =============================================================================
 # GPG SUITE INSTALLATION FUNCTIONS
@@ -396,7 +407,7 @@ cleanup_gpg_install() {
 
 # Function to install GPG Suite
 install_gpg_suite() {
-  info "Installing GPG Suite for secure key management and Git signing..."
+  info "Installing GPG Suite..."
 
   # Check if GPG Suite is already installed
   if [ -d "/Applications/GPG Keychain.app" ]; then
@@ -417,8 +428,14 @@ install_gpg_suite() {
   }
 
   info "Downloading GPG Suite..."
-  # Download GPG Suite with error handling
-  if ! curl -fsSL "https://releases.gpgtools.org/GPG_Suite-2023.3.dmg" -o gpgsuite.dmg; then
+  # Dynamically resolve the latest GPG Suite DMG URL via HTTP redirect
+  latest_gpgsuite_url=$(curl -fsIL https://gpgtools.org/download | awk -F' ' '/^location: /{print $2}' | tail -1 | tr -d '\r')
+  if [[ -z "$latest_gpgsuite_url" ]]; then
+    error "Could not determine the latest GPG Suite download URL"
+    return 1
+  fi
+  info "Downloading GPG Suite from $latest_gpgsuite_url..."
+  if ! curl -fsSL "$latest_gpgsuite_url" -o gpgsuite.dmg; then
     error "Failed to download GPG Suite"
     return 1
   fi
@@ -431,7 +448,7 @@ install_gpg_suite() {
   fi
 
   # Install the package
-  info "Installing GPG Suite (may require password)..."
+  info "Installing GPG Suite..."
   if ! sudo installer -pkg "/Volumes/GPG Suite/Install.pkg" -target /; then
     error "Failed to install GPG Suite package"
     return 1
@@ -444,7 +461,7 @@ install_gpg_suite() {
     hdiutil detach "/Volumes/GPG Suite" -force || true
   }
 
-  # Success - we don't need to manually clean up as trap will handle it
+  # Successful installation
   info "GPG Suite installed successfully."
   trap - EXIT INT TERM
   return 0
@@ -464,6 +481,7 @@ install_gpg_suite || {
     info "Continuing without GPG Suite"
   fi
 }
+info "GPG Suite setup complete"
 
 # =============================================================================
 # .NET SDK INSTALLATION FUNCTIONS
@@ -525,29 +543,4 @@ install_dotnet || {
     info "Continuing without .NET SDK"
   fi
 }
-
-# =============================================================================
-# SETUP COMPLETION AND SHELL INITIALIZATION
-# =============================================================================
-
-section "Setup complete!"
-info "✅ CLI initial setup complete."
-info "🔄 Sourcing shell configuration..."
-
-# Determine the shell profile to source based on the current shell
-if [[ "$SHELL" == *"zsh"* ]]; then
-  SHELL_PROFILE="$HOME/.zshrc"
-elif [[ "$SHELL" == *"bash"* ]]; then
-  SHELL_PROFILE="$HOME/.bash_profile"
-else
-  SHELL_PROFILE="$HOME/.profile"
-fi
-
-# Source the shell configuration to apply changes immediately
-# shellcheck disable=SC1090
-source "$SHELL_PROFILE" 2>/dev/null || {
-  warn "Could not source $SHELL_PROFILE directly in this script"
-  info "Please run 'source $SHELL_PROFILE' manually after the script completes. If you opened a new terminal, restart it to apply all changes."
-}
-
-info "🚀 Environment is ready to use!"
+info ".NET SDK setup complete"
