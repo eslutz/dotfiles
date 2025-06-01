@@ -9,17 +9,21 @@
 # =============================================================================
 
 # Remove a directory from PATH to avoid duplicates
+# Works by temporarily adding colons to beginning/end, replacing target with single colon,
+# then removing the temporary leading/trailing colons
 path_remove() {
   if [[ -n $PATH ]]; then
-    PATH=":$PATH:"
-    PATH="${PATH//:$1:/:}"
-    PATH="${PATH#:}"
-    PATH="${PATH%:}"
+    PATH=":$PATH:"                   # Add boundary colons for safe replacement
+    PATH="${PATH//:$1:/:}"           # Replace :target: with : (removes target and one colon)
+    PATH="${PATH#:}"                 # Remove leading colon if present
+    PATH="${PATH%:}"                 # Remove trailing colon if present
     export PATH
   fi
 }
 
 # Append directory to PATH if it exists and isn't already present
+# Only adds directories that actually exist on the filesystem
+# Checks for duplicates using pattern matching to avoid PATH bloat
 path_append() {
   if [[ -d "$1" && ":$PATH:" != *":$1:"* ]]; then
     export PATH="$PATH:$1"
@@ -27,6 +31,8 @@ path_append() {
 }
 
 # Prepend directory to PATH (highest priority)
+# Removes directory first if present, then adds to beginning
+# This ensures the directory appears only once and at the front
 path_prepend() {
   if [[ -d "$1" ]]; then
     path_remove "$1"  # Remove first to ensure it goes to front
@@ -35,12 +41,17 @@ path_prepend() {
 }
 
 # Remove duplicate entries from PATH
+# Iterates through PATH components and rebuilds without duplicates
+# Also validates that each directory actually exists on the filesystem
 clean_path() {
   if [[ -n $PATH ]]; then
     local new_path=""
     local dir
+    # Split PATH on colons into array for processing
     IFS=':' new_path_array=($PATH)
     for dir in "${new_path_array[@]}"; do
+      # Only include directories that exist and aren't already in new_path
+      # Pattern matching with colons ensures exact directory matches
       if [[ -d "$dir" && ":$new_path:" != *":$dir:"* ]]; then
         if [[ -z $new_path ]]; then
           new_path="$dir"

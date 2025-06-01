@@ -1,29 +1,47 @@
 # dotfiles
 
-My personal dotfiles configuration for quickly setting up a consistent development environment across different machines.
+A dotfiles repository for quickly setting up a consistent development environment across macOS machines.
 
 ## Overview
 
-This repository contains configuration files and setup scripts for:
+This repository provides automated setup scripts and configuration files for a complete development environment including:
 
-- Shell configuration (Zsh with custom prompt and Git integration)
-- Git configuration with GPG signing
-- Vim configuration
-- Development tools and CLI utilities
+- **Shell Configuration**: Enhanced Zsh with custom prompt, Git integration, and intelligent PATH management
+- **Git Configuration**: GPG commit signing, GitHub CLI integration, and optimized settings
+- **Development Tools**: Automated installation of Homebrew, Node.js, .NET SDK, Visual Studio Code, and essential CLI utilities
+- **Vim Configuration**: Basic but functional Vim setup with syntax highlighting
+- **Robust Installation**: Professional-grade scripts with error handling, backup systems, and user interaction
 
 ## Key Features
 
-- **Automatic backup**: Existing configuration files are automatically backed up before being replaced
-- **Smart symlinks**: Creates symbolic links from the dotfiles repository to your home directory
-- **Robust cleanup**: Scripts use trap commands to ensure proper cleanup even if interrupted (Ctrl+C)
-- **Adaptive installation**: Works on both new and existing setups
-- **macOS tools setup**: Installs essential development tools on macOS
-- **Idempotent**: Safe to run multiple times on the same machine
-- **Error resilient**: Continues installation even if individual components fail
+### Production-Ready Installation Scripts
+
+- **Comprehensive Error Handling**: Uses `set -euo pipefail` for strict error detection
+- **Automatic Backup System**: Creates timestamped backups of existing configurations before making changes
+- **Smart Symlinks**: Intelligent symbolic link creation with duplicate detection and validation
+- **Graceful Degradation**: Continues installation even if individual components fail, with detailed reporting
+- **Interactive Installation**: User-friendly prompts with sensible defaults
+- **Debug Support**: Enable detailed logging with `DEBUG=1` environment variable
+- **Trap-based Cleanup**: Ensures temporary files are cleaned up even if scripts are interrupted
+
+### Intelligent Environment Detection
+
+- **macOS Optimization**: Automatically detects Apple Silicon vs Intel Macs
+- **Architecture Support**: Handles both ARM64 and x86_64 architectures seamlessly
+- **Path Management**: Prevents PATH duplication while ensuring proper tool precedence
+- **Shell Integration**: Configures both login (`.zprofile`) and interactive (`.zshrc`) shell sessions
+
+### Comprehensive Development Stack
+
+- **Package Management**: Homebrew with Apple Silicon support and security configurations
+- **Version Control**: Git with GPG signing, GitHub CLI with Copilot integration
+- **Runtime Environments**: Node.js via NVM, .NET SDK latest LTS versions
+- **Development Tools**: Visual Studio Code, PowerShell, GPG Suite, Azure CLI
+- **System Utilities**: Enhanced command-line tools (jq, tree, htop, wget, curl)
 
 ## Installation
 
-### Quick Setup
+### Quick Start
 
 ```bash
 # Clone the repository to your home directory
@@ -34,186 +52,385 @@ cd ~/.dotfiles
 ./install.sh
 ```
 
+### Installation Process
+
 The installation script will:
 
-1. Detect your environment (macOS)
-2. Create symbolic links for dotfiles in your home directory
-3. Optionally set up development tools and applications (on macOS)
+1. **Environment Detection**: Automatically detect your macOS version and architecture
+2. **Symbolic Links**: Create symbolic links for dotfiles in your home directory with automatic backup
+3. **Development Tools**: Optionally install and configure essential development tools (macOS only)
+4. **Validation**: Verify installations and provide detailed feedback on any issues
 
-### What Happens On Existing Systems
-
-If you run this on a machine with existing configurations:
-
-1. Your existing dotfiles will be backed up to `~/.dotfiles_backup/TIMESTAMP/`
-2. Symlinks will be created to the new dotfiles
-3. You can restore your old files from the backup directory if needed
-
-### Manual Component Setup
-
-If you want to run individual components:
+### Installation Options
 
 ```bash
-# Just create symlinks for dotfiles
-~/.dotfiles/scripts/create_links.sh
+# Interactive installation with prompts
+./install.sh
 
-# Just install CLI tools (macOS only)
-~/.dotfiles/scripts/cli_initial_setup.sh
+# Enable debug output for troubleshooting
+DEBUG=1 ./install.sh
+
+# Just create symbolic links (skip development tools)
+./scripts/create_links.sh
+
+# Just install development tools (skip dotfiles)
+./scripts/cli_initial_setup.sh
 ```
 
-## What's Included
+### Safe Installation on Existing Systems
 
-### Dotfiles
+The installation process is designed to be safe on systems with existing configurations:
 
-The following dotfiles are included and automatically linked:
+- **Automatic Backups**: Existing dotfiles are backed up to `~/.dotfiles_backup/TIMESTAMP/`
+- **Non-Destructive**: Only creates symbolic links, original files remain in backup
+- **Resumable**: Safe to re-run if installation is interrupted
+- **Selective**: Choose which additional dotfiles to link beyond the core set
 
-**Core dotfiles (always linked):**
+## Configuration Files
 
-- `.gitconfig` - Git configuration with GPG signing, aliases, and GitHub CLI integration
-- `.gitignore` - Global Git ignore patterns (`.DS_Store`, `.dccache`)
-- `.vimrc` - Basic Vim configuration with syntax highlighting and mouse support
-- `.zprofile` - Zsh login shell configuration with PATH management for Homebrew, .NET, GPG, etc.
-- `.zshrc` - Interactive Zsh configuration with:
-  - Custom prompt with Git branch information
-  - Command completions for Homebrew, Azure CLI, .NET, NVM
-  - Useful aliases (`refresh_zsh`, `npmupdatemajor`)
-  - GitHub Copilot CLI integration
-  - GPG and NVM environment setup
+### Core Dotfiles (Always Linked)
 
-**Additional dotfiles:**
+- **`.gitconfig`**: Git configuration with GPG signing, GitHub CLI integration, and performance optimizations
+- **`.gitignore`**: Global ignore patterns for common system files (`.DS_Store`, `.dccache`)
+- **`.vimrc`**: Essential Vim configuration with syntax highlighting and mouse support
+- **`.zprofile`**: Login shell PATH management with intelligent precedence for development tools
+- **`.zshrc`**: Interactive Zsh configuration with custom prompt, completions, and aliases
 
-Any other dotfiles in the repository root will be detected and you'll be prompted whether to link them.
+### Shell Configuration Details
 
-### macOS Development Environment
+#### `.zprofile` - PATH Management
 
-The macOS setup script (`cli_initial_setup.sh`) installs and configures:
+- **Homebrew Integration**: Automatic Apple Silicon/Intel detection and PATH setup
+- **Development Tools Priority**: Ensures Homebrew tools override system versions
+- **Duplicate Prevention**: Intelligent PATH cleaning to prevent bloat
+- **Tool-Specific Paths**: Dedicated configuration for .NET SDK, GPG Suite, Azure CLI
 
-**Package Manager:**
+#### `.zshrc` - Interactive Features
 
-- Homebrew (with Apple Silicon support)
+- **Custom Prompt**: Clean design with Git branch information and color coding
+- **Smart Completions**: Homebrew, Azure CLI, .NET, and NVM completions
+- **GitHub Copilot**: Automatic CLI aliases setup (ghcs, ghce)
+- **Development Aliases**: Useful shortcuts for common development tasks
+- **Environment Setup**: GPG TTY configuration, NVM initialization
 
-**Homebrew Formulas:**
+### Git Configuration Features
 
-- `git` - Version control (prioritized over system Git)
-- `gh` - GitHub CLI with authentication and Copilot extension
-- `nvm` - Node Version Manager (installs latest LTS Node.js)
-- `azure-cli` - Azure command-line interface
-- `wget`, `curl` - Download tools
-- `jq` - JSON processor
-- `tree` - Directory tree viewer
-- `htop` - Process monitor
+- **GPG Commit Signing**: Automatic signing of all commits for security
+- **GitHub CLI Integration**: Seamless authentication and credential management
+- **Optimized Settings**: Unicode handling, diff improvements, auto-remote setup
+- **Git LFS Support**: Large File Storage configuration for repositories that need it
 
-**Homebrew Casks:**
+## Development Environment (macOS)
 
-- `powershell` - Cross-platform shell
-- `font-monaspace` - Modern coding font
+### Package Manager
 
-**Direct Downloads:**
+- **Homebrew**: Latest version with Apple Silicon support and security hardening
 
-- Visual Studio Code (with command-line integration)
-- GPG Suite (for key management and Git commit signing)
-- .NET SDK (latest LTS version)
+### Essential Tools
 
-**Additional Components:**
+| Tool               | Purpose                                     | Installation Method |
+| ------------------ | ------------------------------------------- | ------------------- |
+| Git                | Version control (newer than system Git)     | Homebrew formula    |
+| GitHub CLI         | GitHub integration with Copilot extension   | Homebrew formula    |
+| Node.js            | JavaScript runtime via NVM (latest LTS)     | Homebrew NVM        |
+| .NET SDK           | Microsoft development platform (latest LTS) | Direct download     |
+| Azure CLI          | Azure cloud management                      | Homebrew formula    |
+| Visual Studio Code | Primary code editor with CLI integration    | Direct download     |
 
-- Rosetta 2 (on Apple Silicon Macs, for Intel app compatibility)
+### Development Utilities
 
-## Script Features
+- **System Tools**: `wget`, `curl`, `jq`, `tree`, `htop` for enhanced command-line experience
+- **Fonts**: Monaspace coding font family for improved readability
+- **Security**: GPG Suite for key management and commit signing
+- **Cross-Platform**: PowerShell for script compatibility
+
+### Architecture Support
+
+- **Apple Silicon**: Native ARM64 support with Rosetta 2 fallback for Intel apps
+- **Intel Macs**: Full compatibility with traditional x86_64 architecture
+- **Universal**: Automatic detection and appropriate binary selection
+
+## Advanced Features
 
 ### Robust Error Handling
 
-- **Trap-based cleanup**: All temporary files and mounted disk images are automatically cleaned up, even if scripts are interrupted with Ctrl+C
-- **Graceful degradation**: If individual components fail, the script continues with others
-- **User choice**: Prompted to continue or abort when failures occur
+- **Strict Error Detection**: All scripts use `set -euo pipefail` for immediate error detection
+- **Graceful Degradation**: Individual component failures don't stop the entire installation
+- **User Choice**: Interactive prompts allow continuing or aborting when issues occur
+- **Failure Tracking**: Comprehensive logging of all failed operations with detailed summary
+- **Trap-based Cleanup**: Automatic cleanup of temporary files even if scripts are interrupted
 
-### Smart Linking
+### Smart Installation Logic
 
-- **Backup existing files**: Original files are safely backed up before creating symlinks
-- **Duplicate detection**: Won't create duplicate symlinks
-- **Selective linking**: Choose which additional dotfiles to link
+- **Idempotent Operations**: Safe to run multiple times - detects existing installations
+- **Backup Management**: Timestamped backup directories with easy restoration commands
+- **Selective Linking**: Choose which additional dotfiles to link beyond the core set
+- **Dependency Detection**: Automatic detection of required tools before attempting installation
+- **Architecture Awareness**: Apple Silicon vs Intel Mac detection with appropriate binary selection
 
-### Path Management
+### PATH Management Excellence
 
-- **No duplicates**: PATH entries are checked before adding
-- **Proper precedence**: Homebrew tools take priority over system tools
-- **Environment detection**: Automatically handles Apple Silicon vs Intel Macs
+- **Duplicate Prevention**: Intelligent algorithms prevent PATH bloat from repeated runs
+- **Tool Precedence**: Ensures development tools override system versions appropriately
+- **Clean Organization**: Logical ordering from high-priority to low-priority directories
+- **Validation**: Only adds directories that actually exist on the filesystem
+
+## Usage Examples
+
+### Basic Operations
+
+```bash
+# Full installation (interactive)
+./install.sh
+
+# Debug mode for troubleshooting
+DEBUG=1 ./install.sh
+
+# Silent installation with defaults
+yes | ./install.sh
+
+# Just link dotfiles (no development tools)
+./scripts/create_links.sh
+
+# Just install development tools (existing dotfiles)
+./scripts/cli_initial_setup.sh
+```
+
+### Working with Backups
+
+```bash
+# List all backup directories
+ls -la ~/.dotfiles_backup/
+
+# Restore specific file from backup
+cp ~/.dotfiles_backup/20250531_143022/.zshrc ~/
+
+# Restore all files from specific backup
+cp -r ~/.dotfiles_backup/20250531_143022/* ~/
+
+# Clean up old backups (keep last 3)
+ls -t ~/.dotfiles_backup/ | tail -n +4 | xargs -I {} rm -rf ~/.dotfiles_backup/{}
+```
+
+### Development Workflow
+
+```bash
+# Refresh shell configuration after changes
+refresh_zsh
+
+# Update Node.js packages to latest major versions
+npmupdatemajor
+
+# Use GitHub Copilot CLI (after installation)
+ghcs "create a bash script that processes CSV files"
+ghce "explain this git command"
+```
 
 ## Customization
 
 ### Adding New Dotfiles
 
-1. Add your dotfile to the repository root (e.g., `.tmux.conf`)
-2. Run `./scripts/create_links.sh` - it will automatically detect and offer to link new files
-3. Or add it to the `core_dotfiles` array in `create_links.sh` if it should always be linked
+1. **Add File**: Place your dotfile in the repository root (e.g., `.tmux.conf`)
+2. **Auto-Detection**: Run `./scripts/create_links.sh` - it will automatically detect new files
+3. **Core Integration**: Add to the `CORE_DOTFILES` array in `create_links.sh` for automatic linking
+4. **Version Control**: Commit and push changes to save them in the repository
 
-### Modifying Existing Dotfiles
+### Modifying Existing Configurations
 
-Since the files in your home directory are symlinks to this repository:
+Since home directory files are symlinks to this repository:
 
-1. Edit any dotfile directly in your home directory or in the repository
-2. Changes are immediately reflected (since they're the same file)
-3. Commit and push changes to save them in the repository
+1. **Direct Editing**: Edit any dotfile directly in your home directory or in the repository
+2. **Immediate Effect**: Changes are reflected immediately (same file via symlink)
+3. **Persistence**: Commit and push changes to save them permanently
+4. **Backup Safety**: Original configurations remain safely backed up
 
-### Customizing the Shell
+### Shell Customization
 
-The Zsh configuration is split into two files:
+The Zsh configuration is split into logical components:
 
-- `.zprofile`: PATH setup and login shell configuration
-- `.zshrc`: Interactive shell features, aliases, and customizations
+- **`.zprofile`**: Login shell configuration, PATH setup, environment variables
+- **`.zshrc`**: Interactive shell features, prompt, aliases, completions, tool integrations
+
+### Development Tool Customization
+
+Modify package lists in `scripts/cli_initial_setup.sh`:
+
+```bash
+# Add to Homebrew formulas array
+local -a formulas=(
+  "git"
+  "azure-cli"
+  "your-new-tool"  # Add here
+)
+
+# Add to Homebrew casks array
+local -a casks=(
+  "powershell"
+  "your-new-app"   # Add here
+)
+```
 
 ## Backup and Recovery
 
-### Automatic Backups
+### Automatic Backup System
 
-- Backups are stored in `~/.dotfiles_backup/TIMESTAMP/`
-- Each run creates a new timestamped backup directory
-- Only files that would be overwritten are backed up
+- **Location**: `~/.dotfiles_backup/YYYYMMDD_HHMMSS/`
+- **Scope**: Only files that would be overwritten are backed up
+- **Preservation**: Original file permissions and timestamps maintained
+- **Organization**: Each installation run creates a separate timestamped directory
 
-### Restoration
+### Recovery Operations
 
 ```bash
-# Restore all files from a specific backup
-cp -r ~/.dotfiles_backup/TIMESTAMP/* ~/
-
-# Restore a specific file
-cp ~/.dotfiles_backup/TIMESTAMP/.zshrc ~/
-
-# List all backups
+# List all available backups
 ls -la ~/.dotfiles_backup/
+
+# Restore specific file from most recent backup
+LATEST=$(ls -t ~/.dotfiles_backup/ | head -1)
+cp ~/.dotfiles_backup/$LATEST/.zshrc ~/
+
+# Restore all files from specific backup
+cp -r ~/.dotfiles_backup/20250531_143022/* ~/
+
+# Compare current config with backup
+diff ~/.zshrc ~/.dotfiles_backup/20250531_143022/.zshrc
+```
+
+### Backup Maintenance
+
+```bash
+# Remove backups older than 30 days
+find ~/.dotfiles_backup -type d -mtime +30 -exec rm -rf {} +
+
+# Keep only the 5 most recent backups
+ls -t ~/.dotfiles_backup/ | tail -n +6 | xargs -I {} rm -rf ~/.dotfiles_backup/{}
 ```
 
 ## Troubleshooting
 
-### GitHub CLI Authentication
+### Common Issues and Solutions
 
-If GitHub CLI authentication fails during setup:
+#### GitHub CLI Authentication
 
 ```bash
+# Re-authenticate with GitHub
 gh auth login
+
+# Install Copilot extension manually
 gh extension install github/gh-copilot
+
+# Check authentication status
+gh auth status
 ```
 
-### Node.js/NVM Issues
-
-If Node.js isn't available after installation:
+#### Node.js/NVM Issues
 
 ```bash
-# Reload your shell configuration
+# Reload shell configuration
 source ~/.zprofile && source ~/.zshrc
 
-# Or manually install Node.js
+# Manually install Node.js LTS
 nvm install --lts
 nvm use --lts
 nvm alias default 'lts/*'
+
+# Check NVM installation
+command -v nvm
 ```
 
-### .NET SDK Issues
-
-If .NET commands aren't found:
+#### .NET SDK Issues
 
 ```bash
-# Check if .NET is installed
+# Check installation location
 ls ~/.dotnet/
 
-# Reload shell configuration
+# Reload PATH configuration
 source ~/.zprofile
+
+# Verify .NET command availability
+dotnet --version
 ```
+
+#### PATH Issues
+
+```bash
+# Check current PATH
+echo $PATH | tr ':' '\n'
+
+# Reload PATH configuration
+source ~/.zprofile
+
+# Manually clean PATH duplicates
+export PATH=$(echo $PATH | tr ':' '\n' | awk '!seen[$0]++' | tr '\n' ':' | sed 's/:$//')
+```
+
+#### Homebrew Permission Issues
+
+```bash
+# Fix Homebrew permissions
+sudo chown -R $(whoami) $(brew --prefix)/*
+
+# Fix Zsh completions permissions
+chmod go-w $(brew --prefix)/share
+```
+
+### Debug Mode
+
+Enable detailed logging for troubleshooting:
+
+```bash
+DEBUG=1 ./install.sh
+DEBUG=1 ./scripts/create_links.sh
+DEBUG=1 ./scripts/cli_initial_setup.sh
+```
+
+Debug mode provides:
+
+- Detailed operation logging
+- Environment variable inspection
+- Step-by-step execution trace
+- Error context information
+
+### Getting Help
+
+1. **Check Debug Output**: Run with `DEBUG=1` to see detailed execution
+2. **Review Logs**: Check the summary output for specific failure details
+3. **Verify Environment**: Ensure you're running on supported macOS version
+4. **Manual Installation**: Individual tools can be installed manually if automated setup fails
+
+## Technical Specifications
+
+### System Requirements
+
+- **Operating System**: macOS 10.15 (Catalina) or later
+- **Architecture**: Apple Silicon (ARM64) or Intel (x86_64)
+- **Shell**: Zsh (default on macOS 10.15+)
+- **Network**: Internet connection for downloading tools and packages
+
+### Security Features
+
+- **GPG Integration**: Automatic commit signing with GPG keys
+- **Homebrew Security**: Analytics disabled, insecure redirects prevented
+- **Permission Management**: Minimal sudo usage, only when necessary
+- **Input Validation**: All user inputs validated before processing
+
+### Performance Optimizations
+
+- **Parallel Downloads**: Multiple tools downloaded concurrently where possible
+- **Caching**: Homebrew and package manager caches utilized
+- **PATH Efficiency**: Optimized PATH ordering for faster command resolution
+- **Completion Loading**: Lazy loading of shell completions for faster startup
+
+---
+
+## Contributing
+
+This is a personal dotfiles repository, but feel free to:
+
+- Fork for your own customizations
+- Submit issues for bugs or improvement suggestions
+- Adapt the scripts for your own development setup
+
+## License
+
+This project is available under the MIT License. See individual tool documentation for their respective licenses.
