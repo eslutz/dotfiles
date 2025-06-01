@@ -11,8 +11,11 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source "$(dirname "$0")/output_formatting.sh"
 
+# Set up exit trap
+trap show_summary EXIT
+
 # =============================================================================
-# SECURITY CHECKS
+# INITIALIZATION
 # =============================================================================
 
 # Ensure script is not run with sudo privileges
@@ -20,31 +23,30 @@ if [ "$(id -u)" -eq 0 ]; then
   error "This script should not be run with sudo, please run as a regular user"
   exit 1
 fi
-# =============================================================================
-# GLOBAL VARIABLES
-# =============================================================================
-
-SETUP_FAILURES=()  # Initialize failures array to track setup issues
+# Initialize failures array to track setup issues
+SETUP_FAILURES=()
 
 # =============================================================================
 # HOMEBREW INSTALLATION AND SETUP
 # =============================================================================
 
 setup_homebrew() {
+  local success=0
+
   info "Checking Homebrew installation..."
   if ! command -v brew &>/dev/null; then
     info "Installing Homebrew..."
     if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
       error "Failed to install Homebrew, installation script returned an error"
-      return 1
+      success=1
     fi
 
     # Initialize Homebrew for Apple Silicon Macs
-    if [[ -f "/opt/homebrew/bin/brew" ]]; then
+    if [[ $success -eq 0 && -f "/opt/homebrew/bin/brew" ]]; then
       eval "$(/opt/homebrew/bin/brew shellenv)"
-    else
+    elif [[ $success -eq 0 ]]; then
       error "Homebrew was installed but brew command not found at /opt/homebrew/bin/brew"
-      return 1
+      success=1
     fi
   else
     info "Homebrew is already installed"
@@ -55,12 +57,14 @@ setup_homebrew() {
   fi
 
   # Verify Homebrew is working correctly
-  if ! command -v brew &>/dev/null; then
+  if [[ $success -eq 0 && ! $(command -v brew) ]]; then
     error "Homebrew installation failed or PATH not set correctly"
-    return 1
+    success=1
   fi
-  info "Homebrew setup complete"
-  return 0
+  if [[ $success -eq 0 ]]; then
+    info "Homebrew setup complete"
+  fi
+  return $success
 }
 
 # =============================================================================
@@ -123,6 +127,7 @@ brew_install() {
   local pkg_type="$1"
   shift
   local packages=("$@")
+  local success=0
 
   for package in "${packages[@]}"; do
     if [[ "$pkg_type" == "cask" ]]; then
@@ -130,17 +135,19 @@ brew_install() {
       if ! brew install --cask "$package"; then
         warn "Failed to install $package (cask)"
         SETUP_FAILURES+=("$package (cask)")
+        success=1
       fi
     else
       info "Installing $package (formula)..."
       if ! brew install "$package"; then
         warn "Failed to install $package (formula)"
         SETUP_FAILURES+=("$package (formula)")
+        success=1
       fi
     fi
   done
 
-  return 0
+  return $success
 }
 
 # =============================================================================
@@ -241,11 +248,9 @@ info "GitHub CLI setup complete"
 # Function to setup and configure Node.js via NVM
 # Installs NVM via Homebrew and sets up the latest LTS Node.js version
 setup_node() {
-  local shell_profile success=0
-  local nvm_dir="$HOME/.nvm"
+  local shell_profile nvm_dir="$HOME/.nvm" success=0
   export NVM_DIR="$nvm_dir"
 
-  # Create NVM directory if it doesn't exist
   mkdir -p "$nvm_dir"
 
   # Install NVM via Homebrew if not already installed
@@ -281,7 +286,6 @@ setup_node() {
       info "Added NVM sourcing to $shell_profile"
     fi
 
-    # Check if NVM command is available
     if command -v nvm &>/dev/null; then
       info "Installing latest LTS version of Node.js..."
       if ! nvm install --lts; then
@@ -331,79 +335,79 @@ info "Node.js environment setup complete"
 
 # Function to install Visual Studio Code
 install_vscode() {
-  # Create a temporary directory for downloads
-  local tmp_dir
+  local tmp_dir success=0
   tmp_dir=$(mktemp -d)
 
-  # Set up trap to clean up temporary directory on exit, interrupt, or error
   trap 'rm -rf "$tmp_dir"; info "Cleanup: Removed temporary directory for VS Code installation"' EXIT INT TERM
 
   cd "$tmp_dir" || {
     error "Failed to create temporary directory"
-    return 1
+    success=1
   }
 
-  info "Downloading Visual Studio Code..."
-  # Download VS Code with error handling
-  if ! curl -fsSL "https://code.visualstudio.com/sha/download?build=stable&os=darwin-universal" -o vscode.zip; then
-    error "Failed to download Visual Studio Code"
-    return 1
-  fi
-
-  # Unzip the package
-  info "Extracting Visual Studio Code..."
-  if ! unzip -q vscode.zip; then
-    error "Failed to extract Visual Studio Code"
-    return 1
-  fi
-
-  # Check if VS Code was extracted correctly
-  if [ ! -d "Visual Studio Code.app" ]; then
-    error "Visual Studio Code.app not found after extraction"
-    return 1
-  fi
-
-  # Prompt for destination
-  local default_dest="/Applications"
-  local dest_dir
-  echo
-  read -r -p "Where do you want to install Visual Studio Code? [${default_dest}] " dest_dir
-  echo
-  # If the user input is empty, use the default. If not absolute, prepend /Applications/
-  if [[ -z "$dest_dir" ]]; then
-    dest_dir="$default_dest"
-  elif [[ "$dest_dir" != /* ]]; then
-    dest_dir="$default_dest/$dest_dir"
-  fi
-
-  # Ensure the destination directory exists
-  if [[ ! -d "$dest_dir" ]]; then
-    info "Creating destination directory: $dest_dir"
-    if ! mkdir -p "$dest_dir"; then
-      error "Failed to create destination directory: $dest_dir"
-      return 1
+  if [ $success -eq 0 ]; then
+    info "Downloading Visual Studio Code..."
+    if ! curl -fsSL "https://code.visualstudio.com/sha/download?build=stable&os=darwin-universal" -o vscode.zip; then
+      error "Failed to download Visual Studio Code"
+      success=1
     fi
-  else
-    info "Destination directory exists: $dest_dir"
   fi
 
-  info "Moving Visual Studio Code to $dest_dir..."
-  if ! mv "Visual Studio Code.app" "$dest_dir/" 2>/dev/null; then
-    warn "Failed to move Visual Studio Code to $dest_dir without sudo"
+  if [ $success -eq 0 ]; then
+    info "Extracting Visual Studio Code..."
+    if ! unzip -q vscode.zip; then
+      error "Failed to extract Visual Studio Code"
+      success=1
+    fi
+  fi
+
+  if [ $success -eq 0 ]; then
+    if [ ! -d "Visual Studio Code.app" ]; then
+      error "Visual Studio Code.app not found after extraction"
+      success=1
+    fi
+  fi
+
+  if [ $success -eq 0 ]; then
+    local dest_dir default_dest="/Applications"
+
     echo
-    read -p "Try with sudo? [Y/n] " -n 1 -r
+    read -r -p "Where do you want to install Visual Studio Code? [${default_dest}] " dest_dir
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-      if ! sudo mv "Visual Studio Code.app" "$dest_dir/"; then
-        error "Failed to move Visual Studio Code to $dest_dir even with sudo"
-        return 1
+    if [[ -z "$dest_dir" ]]; then
+      dest_dir="$default_dest"
+    elif [[ "$dest_dir" != /* ]]; then
+      dest_dir="$default_dest/$dest_dir"
+    fi
+    if [[ ! -d "$dest_dir" ]]; then
+      info "Creating destination directory: $dest_dir"
+      if ! mkdir -p "$dest_dir"; then
+        error "Failed to create destination directory: $dest_dir"
+        success=1
       fi
     else
-      return 1
+      info "Destination directory exists: $dest_dir"
+    fi
+    if [ $success -eq 0 ]; then
+      info "Moving Visual Studio Code to $dest_dir..."
+      if ! mv "Visual Studio Code.app" "$dest_dir/" 2>/dev/null; then
+        warn "Failed to move Visual Studio Code to $dest_dir without sudo"
+        echo
+        read -p "Try with sudo? [Y/n] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+          if ! sudo mv "Visual Studio Code.app" "$dest_dir/"; then
+            error "Failed to move Visual Studio Code to $dest_dir even with sudo"
+            success=1
+          fi
+        else
+          success=1
+        fi
+      fi
     fi
   fi
 
-  if [ "$success" -eq 0 ]; then
+  if [ $success -eq 0 ]; then
     info "Visual Studio Code installed successfully"
     info "To enable the 'code' command in terminal:"
     info "  1. Open VS Code"
@@ -413,7 +417,7 @@ install_vscode() {
   fi
 
   trap - EXIT INT TERM
-  return 0
+  return $success
 }
 
 # =============================================================================
@@ -471,27 +475,21 @@ cleanup_gpg_install() {
       hdiutil detach "/Volumes/GPG Suite" -force || true
     }
   fi
-  # Remove the temporary directory
   info "Cleanup: Removing temporary directory for GPG Suite installation..."
   rm -rf "$tmp_dir"
 }
 
 # Function to install GPG Suite
 install_gpg_suite() {
-  info "Installing GPG Suite..."
-  local success=0
-
-  # Check if GPG Suite is already installed
-  if [ -d "/Applications/GPG Keychain.app" ]; then
-    info "GPG Suite already installed"
-    return 0
-  fi
-
-  # Create a temporary directory for downloads
-  local tmp_dir
+  local tmp_dir success=0
   tmp_dir=$(mktemp -d)
 
-  # Set up trap to ensure cleanup of temporary directory and possibly mounted DMG
+  info "Installing GPG Suite..."
+  if [ -d "/Applications/GPG Keychain.app" ]; then
+    info "GPG Suite already installed"
+    return $success
+  fi
+
   trap 'cleanup_gpg_install "$tmp_dir"' EXIT INT TERM
 
   cd "$tmp_dir" || {
@@ -557,44 +555,46 @@ fi
 
 # Function to install .NET SDK
 install_dotnet() {
-  # Create a temporary directory for downloads
-  local tmp_dir
+  local tmp_dir success=0
   tmp_dir=$(mktemp -d)
 
-  # Set up trap to clean up temporary directory on exit, interrupt, or error
   trap 'rm -rf "$tmp_dir"; info "Cleanup: Removed temporary directory for .NET SDK installation"' EXIT INT TERM
 
   cd "$tmp_dir" || {
     error "Failed to create temporary directory"
-    return 1
+    success=1
   }
 
-  # Download the .NET installation script
-  info "Downloading .NET installation script..."
-  if ! curl -fsSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh; then
-    error "Failed to download .NET installation script"
-    return 1
+  if [ $success -eq 0 ]; then
+    info "Downloading .NET installation script..."
+    if ! curl -fsSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh; then
+      error "Failed to download .NET installation script"
+      success=1
+    fi
   fi
 
-  # Make the script executable
-  chmod +x dotnet-install.sh
-
-  # Run the installation
-  info "Installing .NET SDK..."
-  if ! ./dotnet-install.sh --channel LTS; then
-    error "Failed to install .NET SDK"
-    return 1
+  if [ $success -eq 0 ]; then
+    chmod +x dotnet-install.sh
+    info "Installing .NET SDK..."
+    if ! ./dotnet-install.sh --channel LTS; then
+      error "Failed to install .NET SDK"
+      success=1
+    fi
   fi
 
-  # Check if .NET was installed successfully
-  if ! command -v dotnet &>/dev/null && [ ! -f "$HOME/.dotnet/dotnet" ]; then
-    error ".NET SDK command not found after installation"
-    return 1
+  if [ $success -eq 0 ]; then
+    if ! command -v dotnet &>/dev/null && [ ! -f "$HOME/.dotnet/dotnet" ]; then
+      error ".NET SDK command not found after installation"
+      success=1
+    fi
   fi
 
-  info ".NET SDK installed successfully"
+  if [ $success -eq 0 ]; then
+    info ".NET SDK installed successfully"
+  fi
+
   trap - EXIT INT TERM
-  return 0
+  return $success
 }
 
 # =============================================================================
@@ -610,15 +610,19 @@ else
 fi
 
 # =============================================================================
-# FAILURE SUMMARY
+# SUMMARY
 # =============================================================================
 
-section "Setup Summary"
-if [ ${#SETUP_FAILURES[@]} -gt 0 ]; then
-  warn "Some setup steps failed to complete successfully:"
-  for failure in "${SETUP_FAILURES[@]}"; do
-    error "$failure"
-  done
-else
-  info "All setup steps completed successfully!"
-fi
+show_summary() {
+  if [[ "${DOTFILES_PARENT_SCRIPT:-}" != "1" ]]; then
+    section "Setup Summary"
+    if [ ${#SETUP_FAILURES[@]} -gt 0 ]; then
+      warn "Some steps failed during setup:"
+      for fail in "${SETUP_FAILURES[@]}"; do
+        error "$fail"
+      done
+    else
+      info "All setup steps completed successfully!"
+    fi
+  fi
+}

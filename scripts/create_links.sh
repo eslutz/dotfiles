@@ -9,7 +9,10 @@ set -euo pipefail
 
 # Source shared output formatting functions
 # shellcheck disable=SC1091
-source "$(dirname "$0")/output_formatting.sh"
+source "$(dirname "$0")"/output_formatting.sh
+
+# Set up exit trap
+trap show_summary EXIT
 
 # =============================================================================
 # INITIALIZATION
@@ -18,14 +21,15 @@ source "$(dirname "$0")/output_formatting.sh"
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 DOTFILES_DIR="$(dirname "$SCRIPT_DIR")"
+# Initialize failures array to track setup issues
+LINK_FAILURES=()
 
 # =============================================================================
 # BACKUP CONFIGURATION
 # =============================================================================
 
-# Create backup directory if backup is needed
+# Create backup directory path (but do not create it yet)
 BACKUP_DIR="$HOME/.dotfiles_backup/$(date +%Y%m%d_%H%M%S)"
-BACKUP_NEEDED=0
 
 # =============================================================================
 # LINK CREATION FUNCTION
@@ -35,61 +39,56 @@ BACKUP_NEEDED=0
 link_file() {
   local src="$1"
   local dest="$2"
+  local backup_needed=0
+  local success=0
 
-  # Check if source file exists
+  # Ensure source exists
   if [[ ! -e "$src" ]]; then
-    error "Source file does not exist: $src"
-    return 1
+    error "Source missing: $src"
+    LINK_FAILURES+=("Source missing: $src -> $dest")
+    success=1
   fi
 
-  # Check if the destination exists and is not a symlink pointing to our file
-  if [[ -e "$dest" && ! -L "$dest" ]]; then
-    # File exists but is not a symlink
-    if [[ $BACKUP_NEEDED -eq 0 ]]; then
+  # If dest is a symlink to src, do nothing
+  if [[ $success -eq 0 && -L "$dest" && "$(readlink "$dest")" == "$src" ]]; then
+    info "Link already exists: $dest -> $src"
+    return 0
+  fi
+
+  # If dest exists (file, dir, or wrong symlink), back it up
+  if [[ $success -eq 0 && -e "$dest" ]]; then
+    if [[ $backup_needed -eq 0 ]]; then
       if ! mkdir -p "$BACKUP_DIR"; then
-        error "Failed to create backup directory: $BACKUP_DIR"
-        return 1
+        error "Backup dir creation failed: $BACKUP_DIR"
+        LINK_FAILURES+=("Backup dir creation failed: $dest")
+        success=1
+      else
+        backup_needed=1
       fi
-      BACKUP_NEEDED=1
     fi
-    warn "Backing up existing $dest to $BACKUP_DIR/"
-    if ! mv "$dest" "$BACKUP_DIR/"; then
-      error "Failed to back up $dest to $BACKUP_DIR/"
-      return 1
-    fi
-  elif [[ -L "$dest" ]]; then
-    # It's a symlink, check if it points to our file
-    local current_target
-    current_target=$(readlink "$dest") || {
-      error "Failed to read symlink target for $dest"
-      return 1
-    }
-
-    if [[ "$current_target" == "$src" ]]; then
-      info "Link already exists: $dest -> $src"
-      return 0
-    else
-      warn "Replacing existing symlink $dest -> $current_target"
-      if [[ $BACKUP_NEEDED -eq 0 ]]; then
-        if ! mkdir -p "$BACKUP_DIR"; then
-          error "Failed to create backup directory: $BACKUP_DIR"
-          return 1
-        fi
-        BACKUP_NEEDED=1
-      fi
+    if [[ $success -eq 0 ]]; then
       if ! mv "$dest" "$BACKUP_DIR/"; then
-        error "Failed to back up symlink $dest to $BACKUP_DIR/"
-        return 1
+        error "Backup failed: $dest"
+        LINK_FAILURES+=("Backup failed: $dest")
+        success=1
+      else
+        warn "Backed up $dest to $BACKUP_DIR/"
       fi
     fi
   fi
 
-  # Create the symbolic link
-  if ! ln -sf "$src" "$dest"; then
-    error "Failed to create symlink from $src to $dest"
-    return 1
+  # Create symlink
+  if [[ $success -eq 0 ]]; then
+    if ! ln -sf "$src" "$dest"; then
+      error "Symlink failed: $dest -> $src"
+      LINK_FAILURES+=("Symlink failed: $dest -> $src")
+      success=1
+    else
+      info "Created link: $dest -> $src"
+    fi
   fi
-  info "Created link: $dest -> $src"
+
+  return $success
 }
 
 # =============================================================================
@@ -120,6 +119,7 @@ link_dotfiles() {
       ((success_count++))
     else
       ((fail_count++))
+      LINK_FAILURES+=("Link failed: $file")
     fi
   done
 
@@ -162,16 +162,29 @@ if [[ ${#additional_dotfiles[@]} -gt 0 ]]; then
   fi
 fi
 
-# Display summary
-if [[ $BACKUP_NEEDED -eq 1 ]]; then
-  info "Backups were created in $BACKUP_DIR"
+# =============================================================================
+# SUMMARY
+# =============================================================================
 
-  # Count the number of backups created
-  backup_count=$(find "$BACKUP_DIR" -type f | wc -l | tr -d ' ')
-  if [[ "$backup_count" -gt 0 ]]; then
-    info "Total files backed up: $backup_count"
-    info "You can review backed up files with: ls -la $BACKUP_DIR"
+show_summary() {
+  if [[ "${DOTFILES_PARENT_SCRIPT:-}" != "1" ]]; then
+    section "Link Summary"
+    if [[ -d "$BACKUP_DIR" ]]; then
+      info "Backups were created in $BACKUP_DIR"
+      backup_count=$(find "$BACKUP_DIR" -type f | wc -l | tr -d ' ')
+      if [[ "$backup_count" -gt 0 ]]; then
+        info "Total files backed up: $backup_count"
+        info "You can review backed up files with: ls -la $BACKUP_DIR"
+      fi
+    fi
+
+    if [[ ${#LINK_FAILURES[@]} -gt 0 ]]; then
+      warn "Some link steps failed to complete successfully:"
+      for failure in "${LINK_FAILURES[@]}"; do
+        error "$failure"
+      done
+    else
+      info "Dotfile links created successfully!"
+    fi
   fi
-fi
-
-info "Linking complete!"
+}
