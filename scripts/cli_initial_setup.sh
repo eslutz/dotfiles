@@ -37,37 +37,12 @@ SETUP_FAILURES=()
 # INITIALIZATION
 # =============================================================================
 
-# Source shared output formatting functions
+# Source shared utilities (output formatting and helper functions)
 # shellcheck disable=SC1091
-source "$(dirname "$0")/output_formatting.sh"
+source "$(dirname "$0")/utilities.sh"
 
 # Set up exit trap
 trap show_summary EXIT
-
-# =============================================================================
-# UTILITY FUNCTIONS
-# =============================================================================
-
-# Check if command exists
-command_exists() {
-  command -v "$1" &>/dev/null
-}
-
-# Get user confirmation with default option
-confirm() {
-  local prompt="$1"
-  local default="${2:-N}"
-  local response
-
-  read -p "$prompt [$default] " -n 1 -r response
-  echo
-
-  if [[ -z "$response" ]]; then
-    response="$default"
-  fi
-
-  [[ "$response" =~ ^[Yy]$ ]]
-}
 
 # =============================================================================
 # HOMEBREW INSTALLATION AND SETUP
@@ -300,7 +275,7 @@ install_homebrew_packages() {
 # Installs GitHub CLI, authenticates user, and installs Copilot extension
 setup_github_cli() {
   # Install GitHub CLI if not already installed
-  if ! command -v gh &>/dev/null; then
+  if ! command_exists gh; then
     info "Installing GitHub CLI..."
     if ! brew install gh; then
       warn "Failed to install GitHub CLI"
@@ -401,7 +376,7 @@ setup_node() {
   fi
 
   # Verify NVM command is available and install Node.js LTS
-  if ! command -v nvm &>/dev/null; then
+  if ! command_exists nvm; then
     error "NVM script sourced but command not available"
     SETUP_FAILURES+=("Node.js")
     return 1
@@ -421,7 +396,7 @@ setup_node() {
   nvm alias default 'lts/*' || warn "Failed to set default Node.js version, but continuing"
 
   # Verify Node.js is actually available
-  if ! command -v node &>/dev/null; then
+  if ! command_exists node; then
     error "Node.js command not available after installation"
     SETUP_FAILURES+=("Node.js")
     return 1
@@ -645,7 +620,7 @@ install_dotnet() {
     return 1
   fi
 
-  if ! command -v dotnet &>/dev/null && [ ! -f "$HOME/.dotnet/dotnet" ]; then
+  if ! command_exists dotnet && [ ! -f "$HOME/.dotnet/dotnet" ]; then
     error ".NET SDK command not found after installation"
     trap - EXIT INT TERM
     return 1
@@ -734,7 +709,7 @@ main() {
   if [ -n "$vscode_app_path" ]; then
     info "Visual Studio Code already installed at $vscode_app_path"
     # Check if the 'code' command is available
-    if ! command -v code &>/dev/null; then
+    if ! command_exists code; then
       info "VS Code 'code' command not found"
       info "To enable the 'code' command in terminal:"
       info "  1. Open VS Code"

@@ -46,9 +46,9 @@ LINK_FAILURES=()
 # INITIALIZATION
 # =============================================================================
 
-# Source shared output formatting functions
+# Source shared utilities (output formatting and helper functions)
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/output_formatting.sh"
+source "${SCRIPT_DIR}/utilities.sh"
 
 # Set up exit trap
 trap show_summary EXIT
@@ -229,22 +229,6 @@ show_summary() {
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
-
-# Get user confirmation with default option
-confirm() {
-  local prompt="$1"
-  local default="${2:-N}"
-  local response
-
-  read -p "$prompt [$default] " -n 1 -r response
-  echo
-
-  if [[ -z "$response" ]]; then
-    response="$default"
-  fi
-
-  [[ "$response" =~ ^[Yy]$ ]]
-}
 
 # Find additional dotfiles not in the core list
 # Discovers dotfiles in the repository that aren't in CORE_DOTFILES array

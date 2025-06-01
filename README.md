@@ -39,6 +39,28 @@ This repository provides automated setup scripts and configuration files for a c
 - **Development Tools**: Visual Studio Code, PowerShell, GPG Suite, Azure CLI
 - **System Utilities**: Enhanced command-line tools (jq, tree, htop, wget, curl)
 
+## Script Organization
+
+The repository is organized with modular, reusable scripts:
+
+### Core Scripts
+
+- **`install.sh`** - Main installation script that orchestrates the entire setup process
+- **`scripts/create_links.sh`** - Creates symbolic links for dotfiles with automatic backup
+- **`scripts/cli_initial_setup.sh`** - Installs and configures development tools for macOS
+- **`scripts/utilities.sh`** - Shared utility functions for consistent output formatting and user interaction
+
+### Utility Functions
+
+The `utilities.sh` script provides:
+
+- **Color-coded output**: `info()`, `warn()`, `error()`, `success()`, `debug()`
+- **Section headers**: `section()` and `subsection()` for organized output
+- **User interaction**: `confirm()` function with customizable defaults
+- **Command checking**: `command_exists()` for dependency validation
+
+All scripts source this utilities file for consistent behavior and appearance.
+
 ## Installation
 
 ### Quick Start

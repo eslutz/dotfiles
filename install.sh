@@ -31,9 +31,9 @@ declare -a FAILURES=()
 # INITIALIZATION
 # =============================================================================
 
-# Source shared output formatting functions
+# Source shared utilities (output formatting and helper functions)
 # shellcheck disable=SC1091
-source "${DOTFILES_DIR}/scripts/output_formatting.sh"
+source "${DOTFILES_DIR}/scripts/utilities.sh"
 
 # Set up exit trap
 trap show_summary EXIT
@@ -50,26 +50,6 @@ detect_environment() {
   else
     debug "Non-macOS environment detected: $(uname)"
   fi
-}
-
-# =============================================================================
-# UTILITY FUNCTIONS
-# =============================================================================
-
-# Get user confirmation with default option
-confirm() {
-  local prompt="$1"
-  local default="${2:-N}"
-  local response
-
-  read -p "$prompt [$default] " -n 1 -r response
-  echo
-
-  if [[ -z "$response" ]]; then
-    response="$default"
-  fi
-
-  [[ "$response" =~ ^[Yy]$ ]]
 }
 
 # =============================================================================
