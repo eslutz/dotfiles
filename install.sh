@@ -11,9 +11,6 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source "$(dirname "$0")/scripts/output_formatting.sh"
 
-# Set DOTFILES_PARENT_SCRIPT to indicate this is the parent script
-export DOTFILES_PARENT_SCRIPT=1
-
 # Set up exit trap
 trap show_summary EXIT
 
@@ -56,23 +53,10 @@ fi
 
 section "Setting up symbolic links for dotfiles"
 FAILURES=()  # Initialize failures array before any steps that may fail
-CREATE_LINKS_OUTPUT=""
-CREATE_LINKS_STATUS=0
-CREATE_LINKS_OUTPUT_TMP=$("$DOTFILES_DIR/scripts/create_links.sh" 2>&1)
-CREATE_LINKS_STATUS=$?
-CREATE_LINKS_OUTPUT="$CREATE_LINKS_OUTPUT_TMP"
-# Print output line by line to ensure all output is flushed to the terminal
-while IFS= read -r line; do
-  printf '%s\n' "$line"
-done <<< "$CREATE_LINKS_OUTPUT"
-if [[ $CREATE_LINKS_STATUS -ne 0 ]]; then
+
+# Run create_links.sh directly without capturing output to allow interactive prompts
+if ! "$DOTFILES_DIR/scripts/create_links.sh"; then
   error "Failed to set up symbolic links"
-  # Parse failures from output
-  while IFS= read -r line; do
-    if [[ $line == *"[FAILURE]"* ]]; then
-      FAILURES+=("${line#*] }")
-    fi
-  done <<< "$CREATE_LINKS_OUTPUT"
   FAILURES+=("Symbolic link setup failed")
   # Ask if they want to continue with the rest of the installation
   echo
@@ -85,12 +69,6 @@ if [[ $CREATE_LINKS_STATUS -ne 0 ]]; then
     warn "Continuing despite symbolic link errors"
   fi
 else
-  # Still parse for any warnings/failures even if exit code is 0
-  while IFS= read -r line; do
-    if [[ $line == *"[FAILURE]"* ]]; then
-      FAILURES+=("${line#*] }")
-    fi
-  done <<< "$CREATE_LINKS_OUTPUT"
   info "Symbolic links set up successfully!"
 fi
 
@@ -105,31 +83,12 @@ if [[ "$IS_MACOS" == "true" ]]; then
   read -p "Do you want to install CLI tools and apps for macOS? [y/N] " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
-    CLI_SETUP_OUTPUT=""
-    CLI_SETUP_STATUS=0
-    CLI_SETUP_OUTPUT_TMP=$("$DOTFILES_DIR/scripts/cli_initial_setup.sh" 2>&1)
-    CLI_SETUP_STATUS=$?
-    CLI_SETUP_OUTPUT="$CLI_SETUP_OUTPUT_TMP"
-    while IFS= read -r line; do
-      printf '%s\n' "$line"
-    done <<< "$CLI_SETUP_OUTPUT"
-    if [[ $CLI_SETUP_STATUS -ne 0 ]]; then
+    # Run cli_initial_setup.sh directly without capturing output to allow interactive prompts
+    if ! "$DOTFILES_DIR/scripts/cli_initial_setup.sh"; then
       error "Failed to complete macOS CLI setup"
       info "You can run the setup script later with: $DOTFILES_DIR/scripts/cli_initial_setup.sh"
-      # Parse failures from output
-      while IFS= read -r line; do
-        if [[ $line == *"[FAILURE]"* ]]; then
-          FAILURES+=("${line#*] }")
-        fi
-      done <<< "$CLI_SETUP_OUTPUT"
       FAILURES+=("macOS CLI setup failed")
     else
-      # Still parse for any warnings/failures even if exit code is 0
-      while IFS= read -r line; do
-        if [[ $line == *"[FAILURE]"* ]]; then
-          FAILURES+=("${line#*] }")
-        fi
-      done <<< "$CLI_SETUP_OUTPUT"
       info "macOS CLI setup completed successfully!"
     fi
   else
@@ -143,17 +102,21 @@ fi
 # =============================================================================
 
 show_summary() {
-  unset DOTFILES_PARENT_SCRIPT
-
   section "Installation Summary"
   # Show backup info if present
-  BACKUP_DIR_BASE="$HOME/.dotfiles_backup"
-  if [[ -d "$BACKUP_DIR_BASE" ]]; then
-    LATEST_BACKUP=$(find "$BACKUP_DIR_BASE" -maxdepth 1 -type d | sort -r | head -n1)
-    if [[ -n "$LATEST_BACKUP" && "$LATEST_BACKUP" != "$BACKUP_DIR_BASE" ]]; then
+  local backup_dir_base="$HOME/.dotfiles_backup" backup_created=false
+
+  if [[ -d "$backup_dir_base" ]]; then
+    LATEST_BACKUP=$(find "$backup_dir_base" -maxdepth 1 -type d | sort -r | head -n1)
+    if [[ -n "$LATEST_BACKUP" && "$LATEST_BACKUP" != "$backup_dir_base" ]]; then
       info "Backup of original files was created at: $LATEST_BACKUP"
       info "To restore backups: cp -r $LATEST_BACKUP/* $HOME/"
+      backup_created=true
     fi
+  fi
+
+  if [[ "$backup_created" == "false" ]]; then
+    info "No backups needed - all symbolic links already configured"
   fi
 
   # Display any tracked failures if present
@@ -162,6 +125,8 @@ show_summary() {
     for fail in "${FAILURES[@]}"; do
       error "$fail"
     done
+  else
+    info "All installation steps completed successfully"
   fi
 
   section "Setup Complete"

@@ -167,24 +167,22 @@ fi
 # =============================================================================
 
 show_summary() {
-  if [[ "${DOTFILES_PARENT_SCRIPT:-}" != "1" ]]; then
-    section "Link Summary"
-    if [[ -d "$BACKUP_DIR" ]]; then
-      info "Backups were created in $BACKUP_DIR"
-      backup_count=$(find "$BACKUP_DIR" -type f | wc -l | tr -d ' ')
-      if [[ "$backup_count" -gt 0 ]]; then
-        info "Total files backed up: $backup_count"
-        info "You can review backed up files with: ls -la $BACKUP_DIR"
-      fi
+  section "Link Summary"
+  if [[ -d "$BACKUP_DIR" ]]; then
+    info "Backups were created in $BACKUP_DIR"
+    backup_count=$(find "$BACKUP_DIR" -type f | wc -l | tr -d ' ')
+    if [[ "$backup_count" -gt 0 ]]; then
+      info "Total files backed up: $backup_count"
+      info "You can review backed up files with: ls -la $BACKUP_DIR"
     fi
+  fi
 
-    if [[ ${#LINK_FAILURES[@]} -gt 0 ]]; then
-      warn "Some link steps failed to complete successfully:"
-      for failure in "${LINK_FAILURES[@]}"; do
-        error "$failure"
-      done
-    else
-      info "Dotfile links created successfully!"
-    fi
+  if [[ ${#LINK_FAILURES[@]} -gt 0 ]]; then
+    warn "Some link steps failed to complete successfully:"
+    for failure in "${LINK_FAILURES[@]}"; do
+      error "$failure"
+    done
+  else
+    info "Dotfile links created successfully!"
   fi
 }

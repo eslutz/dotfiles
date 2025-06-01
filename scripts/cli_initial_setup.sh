@@ -614,15 +614,13 @@ fi
 # =============================================================================
 
 show_summary() {
-  if [[ "${DOTFILES_PARENT_SCRIPT:-}" != "1" ]]; then
-    section "Setup Summary"
-    if [ ${#SETUP_FAILURES[@]} -gt 0 ]; then
-      warn "Some steps failed during setup:"
-      for fail in "${SETUP_FAILURES[@]}"; do
-        error "$fail"
-      done
-    else
-      info "All setup steps completed successfully!"
-    fi
+  section "Setup Summary"
+  if [ ${#SETUP_FAILURES[@]} -gt 0 ]; then
+    warn "Some steps failed during setup:"
+    for fail in "${SETUP_FAILURES[@]}"; do
+      error "$fail"
+    done
+  else
+    info "All setup steps completed successfully!"
   fi
 }
