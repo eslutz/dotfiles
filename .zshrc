@@ -30,9 +30,7 @@ export NVM_DIR="$HOME/.nvm"
 if type brew &>/dev/null; then
   # Add Homebrew's completion directories to FPATH
   # site-functions: main Homebrew completions directory
-  # zsh-completions: additional community completions
   FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
-  FPATH="$(brew --prefix)/share/zsh-completions:${FPATH}"
   # Initialize Zsh completion system with the updated FPATH
   autoload -Uz compinit
   compinit

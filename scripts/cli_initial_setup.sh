@@ -233,8 +233,6 @@ install_homebrew_packages() {
     "jq"
     "tree"
     "wget"
-    # Shell enhancements
-    "zsh-completions"
     # Virtualization and development
     "qemu"
   )
