@@ -242,6 +242,7 @@ install_homebrew_packages() {
   local -a casks=(
     "powershell"
     "font-monaspace"
+    "fork"
   )
 
   info "Installing ${#formulas[@]} formulas and ${#casks[@]} casks..."

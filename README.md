@@ -8,7 +8,7 @@ This repository provides automated setup scripts and configuration files for a c
 
 - **Shell Configuration**: Enhanced Zsh with custom prompt, Git integration, and intelligent PATH management
 - **Git Configuration**: GPG commit signing, GitHub CLI integration, and optimized settings
-- **Development Tools**: Automated installation of Homebrew, Node.js, .NET SDK, Visual Studio Code, and essential CLI utilities
+- **Development Tools**: Automated installation of Homebrew, Node.js, .NET SDK, Visual Studio Code, Fork Git client, and essential CLI utilities
 - **Vim Configuration**: Basic but functional Vim setup with syntax highlighting
 - **Robust Installation**: Professional-grade scripts with error handling, backup systems, and user interaction
 
@@ -36,7 +36,7 @@ This repository provides automated setup scripts and configuration files for a c
 - **Package Management**: Homebrew with Apple Silicon support and security configurations
 - **Version Control**: Git with GPG signing, GitHub CLI with Copilot integration
 - **Runtime Environments**: Node.js via NVM, .NET SDK latest LTS versions
-- **Development Tools**: Visual Studio Code, PowerShell, GPG Suite, Azure CLI
+- **Development Tools**: Visual Studio Code, PowerShell, GPG Suite, Azure CLI, Fork Git client
 - **System Utilities**: Enhanced command-line tools (jq, tree, htop, wget, curl)
 
 ## Script Organization
@@ -158,6 +158,7 @@ The installation process is designed to be safe on systems with existing configu
 | .NET SDK           | Microsoft development platform (latest LTS) | Direct download     |
 | Azure CLI          | Azure cloud management                      | Homebrew formula    |
 | Visual Studio Code | Primary code editor with CLI integration    | Direct download     |
+| Fork               | Git client for macOS                        | Homebrew cask       |
 
 ### Development Utilities
 
