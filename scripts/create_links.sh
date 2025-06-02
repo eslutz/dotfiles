@@ -22,10 +22,13 @@ set -euo pipefail
 # =============================================================================
 
 # Get the directory where this script is located
+# shellcheck disable=SC2155
 readonly SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# shellcheck disable=SC2155
 readonly DOTFILES_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Create backup directory path (but do not create it yet)
+# shellcheck disable=SC2155
 readonly BACKUP_DIR="$HOME/.dotfiles_backup/$(date +%Y%m%d_%H%M%S)"
 
 # Define core dotfiles that should always be linked

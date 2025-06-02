@@ -22,6 +22,7 @@ set -euo pipefail
 # =============================================================================
 
 # Get the directory where this script is located
+# shellcheck disable=SC2155
 readonly DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Initialize failures array to track setup issues
