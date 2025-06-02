@@ -158,8 +158,7 @@ The installation process is designed to be safe on systems with existing configu
 | .NET SDK           | Microsoft development platform (latest LTS) | Direct download     |
 | Azure CLI          | Azure cloud management                      | Homebrew formula    |
 | Visual Studio Code | Primary code editor with CLI integration    | Direct download     |
-
-> **Note**: For optimal experience, we recommend installing [Fork Git client](https://git-fork.com) manually from the official website rather than via package managers. This preserves the application's native update mechanism, ensuring you receive the latest features and security updates directly from the developer.
+| Fork Git client    | Advanced Git GUI with visual merge tools    | Direct download     |
 
 ### Development Utilities
 
