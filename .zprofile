@@ -40,8 +40,30 @@ fi
 # =============================================================================
 # These tools should override system versions
 
-# Force Homebrew Git to be first in PATH (takes precedence over standard Homebrew bin)
+# Homebrew packages (highest priority after Git)
+path_prepend "/opt/homebrew/bin"
+path_prepend "/opt/homebrew/sbin"
+
+# Force Homebrew Git to be first in PATH (takes precedence over standard Homebrew)
 path_prepend "/opt/homebrew/opt/git/bin"
+
+# User-installed tools (high priority)
+path_prepend "/usr/local/bin"
+
+# =============================================================================
+# DEVELOPMENT TOOLS AND LANGUAGES
+# =============================================================================
+
+# .NET SDK and Tools
+# Only set this if it's not already in the environment
+if [[ -d "$HOME/.dotnet" && -z "${DOTNET_ROOT}" ]]; then
+  export DOTNET_ROOT="$HOME/.dotnet"
+  path_append "$DOTNET_ROOT"
+  path_append "$DOTNET_ROOT/tools"
+fi
+
+# Azure CLI
+path_append "/opt/homebrew/opt/azure-cli/bin"
 
 # =============================================================================
 # OPTIONAL TOOLS
@@ -51,38 +73,23 @@ path_prepend "/opt/homebrew/opt/git/bin"
 path_append "/usr/local/MacGPG2/bin"
 
 # =============================================================================
-# .NET SDK CONFIGURATION
+# STANDARD SYSTEM PATHS
 # =============================================================================
+# Core system paths - these should come before Apple-specific paths
 
-# .NET SDK and Tools
-# Only set this if it's not already in the environment
-# TODO: remove from script cli_initial_setup.sh will also add this to .zshrc
-if [[ -d "$HOME/.dotnet" && -z "${DOTNET_ROOT}" ]]; then
-  export DOTNET_ROOT="$HOME/.dotnet"
-  path_append "$DOTNET_ROOT"
-  path_append "$DOTNET_ROOT/tools"
-fi
+path_append "/usr/bin"
+path_append "/bin"
+path_append "/usr/sbin"
+path_append "/sbin"
 
 # =============================================================================
 # APPLE SYSTEM PATHS
 # =============================================================================
 # These have lowest priority
 
-# Apple system paths
+# Apple system paths (lowest priority)
 path_append "/System/Cryptexes/App/usr/bin"
 path_append "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
 path_append "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
 path_append "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
 path_append "/Library/Apple/usr/bin"
-
-# =============================================================================
-# STANDARD SYSTEM PATHS
-# =============================================================================
-# These come after our custom tools to ensure proper precedence
-
-# Core system paths (these should always exist)
-path_append "/usr/local/bin"
-path_append "/usr/bin"
-path_append "/bin"
-path_append "/usr/sbin"
-path_append "/sbin"
