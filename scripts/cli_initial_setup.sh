@@ -227,6 +227,8 @@ install_homebrew_packages() {
     "git-lfs"
     # Cloud and DevOps tools
     "azure-cli"
+    # Security and GPG tools
+    "pinentry-mac"
     # System utilities
     "curl"
     "htop"
@@ -367,7 +369,7 @@ setup_node() {
   fi
 
   # Add NVM sourcing to shell profile if not already present
-  # Check if the exact line already exists to avoid duplicates
+  # Check if NVM sourcing is already configured in the shell profile
   if ! grep -q 'nvm.sh' "$shell_profile" 2>/dev/null; then
     echo "[ -s \"$(brew --prefix)/opt/nvm/nvm.sh\" ] && . \"$(brew --prefix)/opt/nvm/nvm.sh\"" >> "$shell_profile"
     info "Added NVM sourcing to $shell_profile"
@@ -587,6 +589,37 @@ install_gpg_suite() {
 }
 
 # =============================================================================
+# GPG CONFIGURATION FUNCTIONS
+# =============================================================================
+
+# Function to configure GPG agent with pinentry-mac
+setup_gpg_agent() {
+  subsection "Configuring GPG agent"
+
+  # Check if pinentry-mac is installed
+  if ! command_exists pinentry-mac; then
+    warn "pinentry-mac not found, skipping GPG agent configuration"
+    return 0
+  fi
+
+  # Create ~/.gnupg directory if it doesn't exist
+  mkdir -p "$HOME/.gnupg"
+
+  # Configure GPG agent with pinentry-mac if not already configured
+  local gpg_agent_conf="$HOME/.gnupg/gpg-agent.conf"
+  # Check if pinentry-mac configuration already exists in GPG agent config
+  if ! grep -q "pinentry-program.*pinentry-mac" "$gpg_agent_conf" 2>/dev/null; then
+    info "Configuring GPG agent to use pinentry-mac"
+    echo "pinentry-program /opt/homebrew/bin/pinentry-mac" >> "$gpg_agent_conf"
+    success "GPG agent configured"
+  else
+    info "GPG agent already configured with pinentry-mac"
+  fi
+
+  return 0
+}
+
+# =============================================================================
 # .NET SDK INSTALLATION FUNCTIONS
 # =============================================================================
 
@@ -671,6 +704,11 @@ main() {
   setup_homebrew_permissions
   setup_rosetta
   install_homebrew_packages
+
+  # GPG agent configuration
+  setup_gpg_agent || {
+    warn "GPG agent configuration failed, but continuing"
+  }
 
   # GitHub CLI setup
   section "Setting up GitHub CLI..."
