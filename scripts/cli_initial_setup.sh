@@ -701,16 +701,17 @@ install_fork() {
     return 1
   fi
 
-  info "Downloading Fork Git client..."
-  # Dynamically resolve the latest Fork DMG URL via HTTP redirect
-  latest_fork_url=$(curl -fsIL https://git-fork.com/download | awk -F' ' '/^location: /{print $2}' | tail -1 | tr -d '\r')
-  if [[ -z "$latest_fork_url" ]]; then
-    error "Could not determine the latest Fork download URL"
+  info "Determining latest Fork version..."
+  # Extract the latest version number from the release notes page
+  latest_fork_version=$(curl -fsSL https://git-fork.com/releasenotes | grep -oE 'Fork [0-9]+\.[0-9]+' | head -1 | sed 's/Fork //')
+  if [[ -z "$latest_fork_version" ]]; then
+    error "Could not determine the latest Fork version"
     trap - EXIT INT TERM
     return 1
   fi
 
-  info "Downloading Fork Git client from $latest_fork_url..."
+  latest_fork_url="https://cdn.fork.dev/mac/Fork-${latest_fork_version}.dmg"
+  info "Downloading Fork Git client v${latest_fork_version} from $latest_fork_url..."
   if ! curl -fsSL "$latest_fork_url" -o fork.dmg; then
     error "Failed to download Fork Git client"
     trap - EXIT INT TERM
