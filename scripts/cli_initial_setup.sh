@@ -703,20 +703,15 @@ install_fork() {
 
   info "Downloading Fork Git client..."
   # Dynamically resolve the latest Fork DMG URL via HTTP redirect
-  local fork_url=""
-  local latest_fork_url=$(curl -fsIL https://git-fork.com/download | awk -F' ' '/^location: /{print $2}' | tail -1 | tr -d '\r')
-  
-  if [[ -n "$latest_fork_url" && "$latest_fork_url" =~ \.dmg$ ]]; then
-    fork_url="$latest_fork_url"
-    info "Found latest Fork download URL via redirect: $fork_url"
-  else
-    # Fallback to known working version if redirect method fails
-    fork_url="https://cdn.fork.dev/mac/Fork-2.50.1.dmg"
-    info "Using fallback URL (redirect method failed): $fork_url"
+  latest_fork_url=$(curl -fsIL https://git-fork.com/download | awk -F' ' '/^location: /{print $2}' | tail -1 | tr -d '\r')
+  if [[ -z "$latest_fork_url" ]]; then
+    error "Could not determine the latest Fork download URL"
+    trap - EXIT INT TERM
+    return 1
   fi
 
-  info "Downloading Fork Git client from $fork_url..."
-  if ! curl -fsSL "$fork_url" -o fork.dmg; then
+  info "Downloading Fork Git client from $latest_fork_url..."
+  if ! curl -fsSL "$latest_fork_url" -o fork.dmg; then
     error "Failed to download Fork Git client"
     trap - EXIT INT TERM
     return 1
