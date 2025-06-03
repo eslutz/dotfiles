@@ -19,7 +19,7 @@ export GPG_TTY=$(tty)
 
 # Node Version Manager (NVM) setup
 export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && . "/opt/homebrew/opt/nvm/nvm.sh"
+[ -s "$(brew --prefix)/opt/nvm/nvm.sh" ] && . "$(brew --prefix)/opt/nvm/nvm.sh"
 
 # =============================================================================
 # SHELL COMPLETIONS
@@ -41,7 +41,7 @@ fi
 autoload bashcompinit && bashcompinit
 
 # NVM bash completions
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && . "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+[ -s "$(brew --prefix)/opt/nvm/etc/bash_completion.d/nvm" ] && . "$(brew --prefix)/opt/nvm/etc/bash_completion.d/nvm"
 
 # Azure CLI completions
 if [ -f "$(brew --prefix)/etc/bash_completion.d/az" ]; then

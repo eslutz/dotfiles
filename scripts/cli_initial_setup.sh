@@ -55,12 +55,6 @@ setup_homebrew() {
   if command_exists brew; then
     info "Homebrew is already installed"
 
-    # Ensure Homebrew is properly initialized for Apple Silicon Macs
-    if [[ -f "/opt/homebrew/bin/brew" ]]; then
-      eval "$(/opt/homebrew/bin/brew shellenv)"
-      debug "Initialized Homebrew environment for Apple Silicon"
-    fi
-
     # Update Homebrew
     info "Updating Homebrew..."
     if ! brew update; then
@@ -80,12 +74,9 @@ setup_homebrew() {
   # Initialize Homebrew for Apple Silicon Macs
   if [[ -f "/opt/homebrew/bin/brew" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
-    info "Initialized Homebrew environment for Apple Silicon"
-  elif [[ -f "/usr/local/bin/brew" ]]; then
-    eval "$(/usr/local/bin/brew shellenv)"
-    info "Initialized Homebrew environment for Intel Mac"
+    info "Initialized Homebrew environment"
   else
-    error "Homebrew was installed but brew command not found in expected locations"
+    error "Homebrew was installed but brew command not found"
     return 1
   fi
 
@@ -106,7 +97,8 @@ setup_homebrew() {
 setup_homebrew_permissions() {
   subsection "Fixing Homebrew permissions (Zsh security)"
 
-  local homebrew_share="/opt/homebrew/share"
+  local homebrew_share
+  homebrew_share="$(brew --prefix)/share"
   if [[ -d "$homebrew_share" ]]; then
     info "Setting secure permissions on $homebrew_share"
     if chmod go-w "$homebrew_share"; then
@@ -610,7 +602,7 @@ setup_gpg_agent() {
   # Check if pinentry-mac configuration already exists in GPG agent config
   if ! grep -q "pinentry-program.*pinentry-mac" "$gpg_agent_conf" 2>/dev/null; then
     info "Configuring GPG agent to use pinentry-mac"
-    echo "pinentry-program /opt/homebrew/bin/pinentry-mac" >> "$gpg_agent_conf"
+    echo "pinentry-program $(brew --prefix)/bin/pinentry-mac" >> "$gpg_agent_conf"
     success "GPG agent configured"
   else
     info "GPG agent already configured with pinentry-mac"

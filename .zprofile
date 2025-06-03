@@ -40,12 +40,12 @@ fi
 # =============================================================================
 # These tools should override system versions
 
-# Homebrew packages (highest priority after Git)
-path_prepend "/opt/homebrew/bin"
-path_prepend "/opt/homebrew/sbin"
+# Homebrew packages (highest priority)
+path_prepend "$(brew --prefix)/bin"
+path_prepend "$(brew --prefix)/sbin"
 
 # Force Homebrew Git to be first in PATH (takes precedence over standard Homebrew)
-path_prepend "/opt/homebrew/opt/git/bin"
+path_prepend "$(brew --prefix)/opt/git/bin"
 
 # User-installed tools (high priority)
 path_prepend "/usr/local/bin"
@@ -63,7 +63,7 @@ if [[ -d "$HOME/.dotnet" && -z "${DOTNET_ROOT}" ]]; then
 fi
 
 # Azure CLI
-path_append "/opt/homebrew/opt/azure-cli/bin"
+path_append "$(brew --prefix)/opt/azure-cli/bin"
 
 # =============================================================================
 # OPTIONAL TOOLS

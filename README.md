@@ -26,8 +26,8 @@ This repository provides automated setup scripts and configuration files for a c
 
 ### Intelligent Environment Detection
 
-- **macOS Optimization**: Automatically detects Apple Silicon vs Intel Macs
-- **Architecture Support**: Handles both ARM64 and x86_64 architectures seamlessly
+- **macOS Optimization**: Configured specifically for macOS systems
+- **Apple Silicon Support**: Optimized for Apple Silicon Macs with proper Homebrew paths
 - **Path Management**: Prevents PATH duplication while ensuring proper tool precedence
 - **Shell Integration**: Configures both login (`.zprofile`) and interactive (`.zshrc`) shell sessions
 
@@ -78,7 +78,7 @@ cd ~/.dotfiles
 
 The installation script will:
 
-1. **Environment Detection**: Automatically detect your macOS version and architecture
+1. **Environment Detection**: Automatically detect your macOS version
 2. **Symbolic Links**: Create symbolic links for dotfiles in your home directory with automatic backup
 3. **Development Tools**: Optionally install and configure essential development tools (macOS only)
 4. **Validation**: Verify installations and provide detailed feedback on any issues
@@ -122,7 +122,7 @@ The installation process is designed to be safe on systems with existing configu
 
 #### `.zprofile` - PATH Management
 
-- **Homebrew Integration**: Automatic Apple Silicon/Intel detection and PATH setup
+- **Homebrew Integration**: Uses `$(brew --prefix)` for reliable path detection
 - **Development Tools Priority**: Ensures Homebrew tools override system versions
 - **Duplicate Prevention**: Intelligent PATH cleaning to prevent bloat
 - **Tool-Specific Paths**: Dedicated configuration for .NET SDK, GPG Suite, Azure CLI
@@ -162,16 +162,22 @@ The installation process is designed to be safe on systems with existing configu
 
 ### Development Utilities
 
-- **System Tools**: `wget`, `curl`, `jq`, `tree`, `htop` for enhanced command-line experience
-- **Fonts**: Monaspace coding font family for improved readability
-- **Security**: GPG Suite for key management and commit signing
-- **Cross-Platform**: PowerShell for script compatibility
+| Utility    | Category    | Purpose                                       | Installation Method |
+| ---------- | ----------- | --------------------------------------------- | ------------------- |
+| wget       | System Tool | Download files from the web via CLI           | Homebrew formula    |
+| curl       | System Tool | Data transfer with URL syntax                 | Homebrew formula    |
+| jq         | System Tool | JSON processor for the command line           | Homebrew formula    |
+| tree       | System Tool | Directory listings in tree format             | Homebrew formula    |
+| htop       | System Tool | Interactive process viewer                    | Homebrew formula    |
+| Monaspace  | Fonts       | Coding font family for improved readability   | Homebrew cask       |
+| GPG Suite  | Security    | Key management and commit signing             | Direct download     |
+| PowerShell | Shell       | Cross-platform scripting and automation shell | Homebrew cask       |
 
 ### Architecture Support
 
-- **Apple Silicon**: Native ARM64 support with Rosetta 2 fallback for Intel apps
-- **Intel Macs**: Full compatibility with traditional x86_64 architecture
-- **Universal**: Automatic detection and appropriate binary selection
+- **Apple Silicon**: Native ARM64 support optimized for Apple Silicon Macs
+- **Homebrew Paths**: Uses `$(brew --prefix)` for dynamic path resolution
+- **Modern macOS**: Designed for macOS 10.15+ with Zsh as the default shell
 
 ## Advanced Features
 
@@ -189,7 +195,7 @@ The installation process is designed to be safe on systems with existing configu
 - **Backup Management**: Timestamped backup directories with easy restoration commands
 - **Selective Linking**: Choose which additional dotfiles to link beyond the core set
 - **Dependency Detection**: Automatic detection of required tools before attempting installation
-- **Architecture Awareness**: Apple Silicon vs Intel Mac detection with appropriate binary selection
+- **Apple Silicon Optimized**: Configured specifically for Apple Silicon Macs
 
 ### PATH Management Excellence
 
@@ -426,7 +432,7 @@ Debug mode provides:
 ### System Requirements
 
 - **Operating System**: macOS 10.15 (Catalina) or later
-- **Architecture**: Apple Silicon (ARM64) or Intel (x86_64)
+- **Architecture**: Apple Silicon (ARM64)
 - **Shell**: Zsh (default on macOS 10.15+)
 - **Network**: Internet connection for downloading tools and packages
 
