@@ -663,6 +663,82 @@ install_dotnet() {
 }
 
 # =============================================================================
+# FORK GIT CLIENT INSTALLATION FUNCTIONS
+# =============================================================================
+
+# Function to clean up Fork installation
+cleanup_fork_install() {
+  local tmp_dir="$1"
+  # Attempt to detach the disk image if it's mounted
+  if mount | grep -q "/Volumes/Fork"; then
+    info "Cleanup: Detaching Fork disk image..."
+    hdiutil detach "/Volumes/Fork" -force || {
+      warn "Could not detach Fork disk image. Will try to force unmount with a delay..."
+      sleep 2
+      hdiutil detach "/Volumes/Fork" -force || true
+    }
+  fi
+  info "Cleanup: Removing temporary directory for Fork installation..."
+  rm -rf "$tmp_dir"
+}
+
+# Function to install Fork Git client
+install_fork() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+
+  info "Installing Fork Git client..."
+  if [ -d "/Applications/Fork.app" ]; then
+    info "Fork Git client already installed"
+    return 0
+  fi
+
+  trap 'cleanup_fork_install "$tmp_dir"' EXIT INT TERM
+
+  if ! cd "$tmp_dir"; then
+    error "Failed to create temporary directory"
+    trap - EXIT INT TERM
+    return 1
+  fi
+
+  info "Determining latest Fork version..."
+  # Extract the latest version number from the release notes page
+  latest_fork_version=$(curl -fsSL https://git-fork.com/releasenotes | grep -oE 'Fork [0-9]+\.[0-9]+' | head -1 | sed 's/Fork //')
+  if [[ -z "$latest_fork_version" ]]; then
+    error "Could not determine the latest Fork version"
+    trap - EXIT INT TERM
+    return 1
+  fi
+
+  latest_fork_url="https://cdn.fork.dev/mac/Fork-${latest_fork_version}.dmg"
+  info "Downloading Fork Git client v${latest_fork_version} from $latest_fork_url..."
+  if ! curl -fsSL "$latest_fork_url" -o fork.dmg; then
+    error "Failed to download Fork Git client"
+    trap - EXIT INT TERM
+    return 1
+  fi
+
+  info "Mounting Fork disk image..."
+  if ! hdiutil attach fork.dmg -nobrowse; then
+    error "Failed to mount Fork disk image"
+    trap - EXIT INT TERM
+    return 1
+  fi
+
+  info "Installing Fork Git client..."
+  # Fork is an app bundle, so we copy it to Applications
+  if ! cp -R "/Volumes/Fork/Fork.app" "/Applications/"; then
+    error "Failed to install Fork Git client"
+    trap - EXIT INT TERM
+    return 1
+  fi
+
+  info "Fork Git client installed successfully"
+  trap - EXIT INT TERM
+  return 0
+}
+
+# =============================================================================
 # SUMMARY FUNCTIONS
 # =============================================================================
 
@@ -779,6 +855,15 @@ main() {
     SETUP_FAILURES+=(".NET SDK")
   else
     info ".NET SDK setup complete"
+  fi
+
+  # Fork Git client setup
+  section "Installing Fork Git client..."
+  if ! install_fork; then
+    warn "Fork Git client installation failed, but continuing"
+    SETUP_FAILURES+=("Fork Git client")
+  else
+    info "Fork Git client setup complete"
   fi
 
   # Show final summary

@@ -158,6 +158,7 @@ The installation process is designed to be safe on systems with existing configu
 | .NET SDK           | Microsoft development platform (latest LTS) | Direct download     |
 | Azure CLI          | Azure cloud management                      | Homebrew formula    |
 | Visual Studio Code | Primary code editor with CLI integration    | Direct download     |
+| Fork Git client    | Advanced Git GUI with visual merge tools    | Direct download     |
 
 ### Development Utilities
 
