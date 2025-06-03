@@ -702,31 +702,20 @@ install_fork() {
   fi
 
   info "Downloading Fork Git client..."
-  # Try to get the latest version dynamically first
+  # Dynamically resolve the latest Fork DMG URL via HTTP redirect
   local fork_url=""
-  local base_url="https://cdn.fork.dev/mac/Fork-"
-  local version="2.50.1"  # Known working version as fallback
+  local latest_fork_url=$(curl -fsIL https://git-fork.com/download | awk -F' ' '/^location: /{print $2}' | tail -1 | tr -d '\r')
   
-  # Try a few recent version patterns in case there are newer versions
-  # Check in descending order so we get the latest available
-  for try_version in "2.52.0" "2.51.1" "2.51.0" "2.50.2" "2.50.1"; do
-    local test_url="${base_url}${try_version}.dmg"
-    info "Checking availability of Fork version $try_version..."
-    if curl -fsIL "$test_url" --head --connect-timeout 10 --max-time 30 &>/dev/null; then
-      fork_url="$test_url"
-      version="$try_version"
-      info "Found available version: $version"
-      break
-    fi
-  done
-  
-  # If no version check succeeded, use the known working version
-  if [[ -z "$fork_url" ]]; then
-    fork_url="${base_url}${version}.dmg"
-    info "Using fallback version: $version"
+  if [[ -n "$latest_fork_url" && "$latest_fork_url" =~ \.dmg$ ]]; then
+    fork_url="$latest_fork_url"
+    info "Found latest Fork download URL via redirect: $fork_url"
+  else
+    # Fallback to known working version if redirect method fails
+    fork_url="https://cdn.fork.dev/mac/Fork-2.50.1.dmg"
+    info "Using fallback URL (redirect method failed): $fork_url"
   fi
 
-  info "Downloading Fork Git client version $version from $fork_url..."
+  info "Downloading Fork Git client from $fork_url..."
   if ! curl -fsSL "$fork_url" -o fork.dmg; then
     error "Failed to download Fork Git client"
     trap - EXIT INT TERM
