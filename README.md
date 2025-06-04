@@ -22,21 +22,6 @@ A personal dotfiles repository for quickly setting up a consistent, robust devel
 - **Path Management**: Prevents PATH duplication while ensuring proper tool precedence
 - **Shell Integration**: Configures both login (`.zprofile`) and interactive (`.zshrc`) shell sessions
 
-## Script Organization
-
-The repository is organized with modular, reusable scripts:
-
-### Core Scripts
-
-- **`install.sh`** - Main installation script that orchestrates the entire setup process
-- **`scripts/create_links.sh`** - Creates symbolic links for dotfiles with automatic backup
-- **`scripts/cli_initial_setup.sh`** - Installs and configures development tools for macOS
-- **`scripts/utilities.sh`** - Shared utility functions for consistent output formatting and user interaction
-  - **Color-coded output**: `info()`, `warn()`, `error()`, `success()`, `debug()`
-  - **Section headers**: `section()` and `subsection()` for organized output
-  - **User interaction**: `confirm()` function with customizable defaults
-  - **Command checking**: `command_exists()` for dependency validation
-
 ## Installation
 
 ### Installation Process
@@ -79,18 +64,52 @@ yes | ./install.sh
 ./scripts/cli_initial_setup.sh
 ```
 
+## Scripts
+
+The repository is organized with modular, reusable scripts:
+
+| Script                         | Purpose/Features                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------- |
+| `install.sh`                   | Main installation script that orchestrates the entire setup process             |
+| `scripts/create_links.sh`      | Creates symbolic links for dotfiles with automatic backup                       |
+| `scripts/cli_initial_setup.sh` | Installs and configures development tools for macOS                             |
+| `scripts/utilities.sh`         | Shared utility functions consisting of output, helper, and validation functions |
+
+### Utility Functions
+
+The `scripts/utilities.sh` file provides the following functions:
+
+| Category   | Function                         | Purpose                                                       |
+| ---------- | -------------------------------- | ------------------------------------------------------------- |
+| Output     | `info()`                         | Display informational messages with green color coding        |
+| Output     | `warn()`                         | Display warning messages with yellow color coding             |
+| Output     | `error()`                        | Display error messages with red color coding                  |
+| Output     | `success()`                      | Display success messages with green color coding              |
+| Output     | `debug()`                        | Display debug messages when DEBUG environment variable is set |
+| Output     | `section()`                      | Create formatted section headers for organized output         |
+| Output     | `subsection()`                   | Create formatted subsection headers for organized output      |
+| Helper     | `command_exists()`               | Check if a command is available before attempting to use it   |
+| Helper     | `confirm()`                      | Interactive user confirmation with customizable defaults      |
+| Helper     | `sanitize_input()`               | Remove dangerous characters from user input                   |
+| Validation | `validate_not_empty()`           | Ensure input is not empty                                     |
+| Validation | `validate_directory()`           | Check if directory path exists                                |
+| Validation | `validate_file()`                | Check if file exists                                          |
+| Validation | `validate_writable()`            | Check if path is writable                                     |
+| Validation | `validate_not_root()`            | Ensure script is not running as root                          |
+| Validation | `validate_system_requirements()` | Comprehensive system validation for macOS setup               |
+
 ## Configuration Files
 
 The dotfiles are organized in the `dotfiles/` directory:
 
-| File           | Purpose/Features                                                            |
-| -------------- | --------------------------------------------------------------------------- |
-| `.editorconfig`| Editor consistency: indentation, encoding, line endings across all projects|
-| `.gitconfig`   | Git config (GPG signing, GitHub CLI, LFS, Unicode, performance tweaks)     |
-| `.gitignore`   | Global ignore patterns for common system files                             |
-| `.vimrc`       | Vim config with syntax highlighting and mouse support                      |
-| `.zprofile`    | Login shell: PATH management, tool precedence, Homebrew/SDK/Azure CLI setup|
-| `.zshrc`       | Interactive shell: prompt, completions, aliases, Copilot, NVM, dev aliases |
+| File            | Purpose/Features                                                            |
+| --------------- | --------------------------------------------------------------------------- |
+| `.editorconfig` | Editor consistency: indentation, encoding, line endings across all projects |
+| `.gitconfig`    | Git config (GPG signing, GitHub CLI, LFS, Unicode, performance tweaks)      |
+| `.gitignore`    | Global ignore patterns for common system files                              |
+| `.vimrc`        | Vim config with syntax highlighting and mouse support                       |
+| `.zprofile`     | Login shell: PATH management, tool precedence, Homebrew/SDK/Azure CLI setup |
+| `.zshrc`        | Interactive shell: prompt, completions, aliases, Copilot, NVM, dev aliases  |
 
 ## Development Environment
 
