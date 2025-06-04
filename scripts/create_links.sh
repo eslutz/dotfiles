@@ -21,11 +21,12 @@ set -euo pipefail
 # CONFIGURATION
 # =============================================================================
 
-# Get the directory where this script is located
+# Get the directory where this script is located (scripts/)
 # shellcheck disable=SC2155
 readonly SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Get the dotfiles directory (dotfiles/ subdirectory) - built the same way as SCRIPT_DIR
 # shellcheck disable=SC2155
-readonly DOTFILES_DIR="$(dirname "$SCRIPT_DIR")"
+readonly DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../dotfiles" && pwd )"
 
 # Create backup directory path (but do not create it yet)
 # shellcheck disable=SC2155
@@ -52,6 +53,28 @@ LINK_FAILURES=()
 # Source shared utilities (output formatting and helper functions)
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/utilities.sh"
+
+# Validate we're not running as root
+validate_not_root || {
+  error "This script must be run as a regular user, not root"
+  exit 1
+}
+
+# Validate required directories exist
+validate_directory "$DOTFILES_DIR" "Dotfiles directory" || {
+  error "Cannot access dotfiles directory: $DOTFILES_DIR"
+  exit 1
+}
+
+validate_directory "$HOME" "Home directory" || {
+  error "Cannot access home directory: $HOME"
+  exit 1
+}
+
+validate_writable "$HOME" "Home directory" || {
+  error "Cannot write to home directory: $HOME"
+  exit 1
+}
 
 # Set up exit trap
 trap show_summary EXIT
@@ -85,13 +108,26 @@ link_file() {
   local src="$1"
   local dest="$2"
 
+  # Validate input arguments
+  validate_not_empty "$src" "Source path" || {
+    LINK_FAILURES+=("Invalid source path: empty")
+    return 1
+  }
+  validate_not_empty "$dest" "Destination path" || {
+    LINK_FAILURES+=("Invalid destination path: empty")
+    return 1
+  }
+
+  # Sanitize paths to prevent injection attacks
+  src=$(sanitize_input "$src")
+  dest=$(sanitize_input "$dest")
+
   # Validate source file exists before attempting any operations
   # This prevents creating broken symlinks
-  if [[ ! -e "$src" ]]; then
-    error "Source file does not exist: $src"
+  validate_file "$src" "Source file" || {
     LINK_FAILURES+=("Source missing: $src -> $dest")
     return 1
-  fi
+  }
 
   # Check if destination is already a correct symlink
   # If so, skip the operation to avoid unnecessary work
@@ -179,9 +215,13 @@ link_dotfiles() {
 validate_dotfiles() {
   local missing_files=()
 
+  info "Validating core dotfiles..."
   for file in "${CORE_DOTFILES[@]}"; do
-    if [[ ! -f "$DOTFILES_DIR/$file" ]]; then
+    local full_path="$DOTFILES_DIR/$file"
+    if ! validate_file "$full_path" "Core dotfile '$file'"; then
       missing_files+=("$file")
+    else
+      debug "Found: $file"
     fi
   done
 
@@ -190,10 +230,11 @@ validate_dotfiles() {
     for file in "${missing_files[@]}"; do
       error "  $file"
     done
+    error "Please ensure all core dotfiles are present in: $DOTFILES_DIR"
     return 1
   fi
 
-  debug "All required dotfiles found"
+  success "All core dotfiles validated"
   return 0
 }
 
@@ -270,7 +311,10 @@ find_additional_dotfiles() {
 
   # Output each additional dotfile on a separate line
   # This allows the caller to capture them in an array with mapfile
-  printf '%s\n' "${additional_dotfiles[@]}"
+  # Only output if array has elements to avoid "unbound variable" error
+  if [[ ${#additional_dotfiles[@]} -gt 0 ]]; then
+    printf '%s\n' "${additional_dotfiles[@]}"
+  fi
 }
 
 # =============================================================================
