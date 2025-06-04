@@ -15,6 +15,47 @@
   - Write modular scripts and use functions for repeated logic.
   - Validate user input and check command existence before use.
 
+### Comment Conventions
+
+- **File headers**: Use a multi-line block with script purpose and usage examples:
+  ```bash
+  # =============================================================================
+  # Script Name
+  # =============================================================================
+  # Brief description of the script's purpose
+  #
+  # Usage:
+  #   ./script.sh [options]
+  ```
+
+- **Section headers**: Use consistent section dividers with descriptive names:
+  ```bash
+  # =============================================================================
+  # SECTION NAME
+  # =============================================================================
+  ```
+
+- **Subsection headers**: Use shorter dividers for subsections:
+  ```bash
+  # Function group description
+  # =============================================================================
+  ```
+
+- **Function comments**: Document function purpose, parameters, and return values:
+  ```bash
+  # Function description
+  # Usage: function_name "param1" "param2"
+  # Arguments: param1 description, param2 description
+  # Returns: 0 on success, 1 on failure
+  ```
+
+- **Inline comments**: Use sparingly for complex logic or important notes:
+  ```bash
+  command --flag  # Explain why this flag is needed
+  ```
+
+- **Block comments**: For multi-step logic explanations, align with code indentation
+
 ## Security & Safety
 
 - Do not store secrets or credentials in scripts or dotfiles.

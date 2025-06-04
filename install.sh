@@ -7,9 +7,9 @@
 #
 # Usage:
 #   ./install.sh                              # Interactive installation
-#   ./install.sh -y                           # Non-interactive (accept all defaults)
+#   ./install.sh --non-interactive            # Non-interactive (accept all defaults)
 #   ./install.sh -p parameters.json           # Use parameters file
-#   ./install.sh -y -p parameters.json        # Non-interactive with parameters
+#   ./install.sh --non-interactive -p parameters.json  # Non-interactive with parameters
 #   DEBUG=1 ./install.sh                      # Enable debug output
 #
 # This script will:
@@ -44,15 +44,16 @@ usage() {
 Usage: $0 [OPTIONS]
 
 OPTIONS:
-    -y, --yes           Run non-interactively (accept all defaults)
-    -p, --parameters    Path to parameters JSON file
-    -h, --help          Show this help message
+    -y, --yes                Run non-interactively (accept all defaults) [deprecated, use --non-interactive]
+    --non-interactive        Run non-interactively (accept all defaults)
+    -p, --parameters         Path to parameters JSON file
+    -h, --help               Show this help message
 
 EXAMPLES:
-    $0                          # Interactive installation
-    $0 -y                       # Non-interactive installation
-    $0 -p parameters.json       # Use parameters file
-    $0 -y -p parameters.json    # Non-interactive with parameters
+    $0                              # Interactive installation
+    $0 --non-interactive            # Non-interactive installation
+    $0 -p parameters.json           # Use parameters file
+    $0 --non-interactive -p parameters.json  # Non-interactive with parameters
 
 EOF
 }
@@ -60,7 +61,7 @@ EOF
 # Parse command line options
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -y|--yes)
+        -y|--yes|--non-interactive)
             NON_INTERACTIVE=true
             shift
             ;;

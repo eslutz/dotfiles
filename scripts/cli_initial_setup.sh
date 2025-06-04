@@ -6,9 +6,10 @@
 # Includes Homebrew, CLI tools, Node.js, .NET SDK, and GUI applications
 #
 # Usage:
-#   ./cli_initial_setup.sh                      # Interactive setup with prompts
-#   ./cli_initial_setup.sh --parameters file.json # Use parameters file for additional packages
-#   DEBUG=1 ./cli_initial_setup.sh              # Enable debug output
+#   ./cli_initial_setup.sh                              # Interactive setup with prompts
+#   ./cli_initial_setup.sh --non-interactive            # Non-interactive setup
+#   ./cli_initial_setup.sh --parameters file.json       # Use parameters file for additional packages
+#   DEBUG=1 ./cli_initial_setup.sh                      # Enable debug output
 #
 # This script will:
 #   1. Install and configure Homebrew package manager
@@ -32,6 +33,10 @@ while [[ $# -gt 0 ]]; do
             PARAMETERS_FILE="$2"
             shift 2
             ;;
+        --non-interactive)
+            NON_INTERACTIVE=true
+            shift
+            ;;
         *)
             shift
             ;;
@@ -46,6 +51,9 @@ done
 declare -a SETUP_FAILURES
 SETUP_FAILURES=()
 
+# Script options - default to interactive mode
+NON_INTERACTIVE="${NON_INTERACTIVE:-false}"
+
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
@@ -53,6 +61,23 @@ SETUP_FAILURES=()
 # Source shared utilities (output formatting and helper functions)
 # shellcheck disable=SC1091
 source "$(dirname "$0")/utilities.sh"
+
+# Override confirm function for non-interactive mode
+if [[ "$NON_INTERACTIVE" == "true" ]]; then
+    # Override with auto-yes version
+    confirm() {
+        local prompt="$1"
+        local default="${2:-Y}"
+
+        if [[ "$default" =~ ^[Yy]$ ]]; then
+            info "$prompt [Y/n] Y (auto-accepted)"
+            return 0
+        else
+            info "$prompt [y/N] N (auto-declined)"
+            return 1
+        fi
+    }
+fi
 
 # Validate we're not running as root
 validate_not_root || {
@@ -106,6 +131,31 @@ setup_homebrew() {
   fi
 
   success "Homebrew installed and configured successfully"
+  return 0
+}
+
+# =============================================================================
+# EARLY DEPENDENCY INSTALLATION
+# =============================================================================
+
+ensure_jq_available() {
+  # Install jq early if parameters file is provided and jq is not available
+  if [[ -n "$PARAMETERS_FILE" ]] && ! command_exists jq; then
+    info "jq is required for processing parameters file, installing early..."
+    
+    if ! command_exists brew; then
+      warn "Homebrew not available, cannot install jq. Parameter file processing will be skipped."
+      return 1
+    fi
+    
+    if brew install jq; then
+      success "jq installed successfully"
+      return 0
+    else
+      warn "Failed to install jq. Parameter file processing will be skipped."
+      return 1
+    fi
+  fi
   return 0
 }
 
@@ -818,6 +868,9 @@ main() {
     warn "Homebrew setup failed, but continuing"
     SETUP_FAILURES+=("Homebrew")
   }
+
+  # Ensure jq is available for parameter file processing
+  ensure_jq_available
 
   setup_homebrew_permissions
   setup_rosetta
