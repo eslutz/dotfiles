@@ -23,12 +23,6 @@ set -euo pipefail
 # CONFIGURATION
 # =============================================================================
 
-# Ensure script is not run with sudo privileges
-if [[ "$(id -u)" -eq 0 ]]; then
-  error "This script should not be run with sudo, please run as a regular user" >&2
-  exit 1
-fi
-
 # Initialize failures array to track setup issues
 declare -a SETUP_FAILURES
 SETUP_FAILURES=()
@@ -40,6 +34,12 @@ SETUP_FAILURES=()
 # Source shared utilities (output formatting and helper functions)
 # shellcheck disable=SC1091
 source "$(dirname "$0")/utilities.sh"
+
+# Validate we're not running as root
+validate_not_root || {
+  error "This script must be run as a regular user, not root"
+  exit 1
+}
 
 # Set up exit trap
 trap show_summary EXIT
@@ -283,11 +283,15 @@ setup_github_cli() {
   info "Checking GitHub CLI authentication..."
   if ! gh auth status &>/dev/null; then
     info "GitHub CLI not authenticated. Starting login process..."
+    info "You will be prompted to authenticate with GitHub..."
+
     if ! gh auth login; then
       error "Failed to authenticate with GitHub CLI"
+      info "You can retry authentication later with: gh auth login"
       SETUP_FAILURES+=("GitHub CLI authentication")
       return 1
     fi
+
     info "GitHub CLI authenticated successfully"
   else
     info "GitHub CLI already authenticated"
@@ -452,6 +456,9 @@ install_vscode() {
   read -r -p "Where do you want to install Visual Studio Code? [${default_dest}] " dest_dir
   echo
 
+  # Sanitize and validate user input
+  dest_dir=$(sanitize_input "$dest_dir")
+
   # Use default if user just pressed Enter
   if [[ -z "$dest_dir" ]]; then
     dest_dir="$default_dest"
@@ -612,49 +619,6 @@ setup_gpg_agent() {
 }
 
 # =============================================================================
-# .NET SDK INSTALLATION FUNCTIONS
-# =============================================================================
-
-# Function to install .NET SDK
-install_dotnet() {
-  local tmp_dir
-  tmp_dir=$(mktemp -d)
-
-  trap 'rm -rf "$tmp_dir"; info "Cleanup: Removed temporary directory for .NET SDK installation"' EXIT INT TERM
-
-  if ! cd "$tmp_dir"; then
-    error "Failed to create temporary directory"
-    trap - EXIT INT TERM
-    return 1
-  fi
-
-  info "Downloading .NET installation script..."
-  if ! curl -fsSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh; then
-    error "Failed to download .NET installation script"
-    trap - EXIT INT TERM
-    return 1
-  fi
-
-  chmod +x dotnet-install.sh
-  info "Installing .NET SDK..."
-  if ! ./dotnet-install.sh --channel LTS; then
-    error "Failed to install .NET SDK"
-    trap - EXIT INT TERM
-    return 1
-  fi
-
-  if ! command_exists dotnet && [ ! -f "$HOME/.dotnet/dotnet" ]; then
-    error ".NET SDK command not found after installation"
-    trap - EXIT INT TERM
-    return 1
-  fi
-
-  info ".NET SDK installed successfully"
-  trap - EXIT INT TERM
-  return 0
-}
-
-# =============================================================================
 # FORK GIT CLIENT INSTALLATION FUNCTIONS
 # =============================================================================
 
@@ -731,6 +695,49 @@ install_fork() {
 }
 
 # =============================================================================
+# .NET SDK INSTALLATION FUNCTIONS
+# =============================================================================
+
+# Function to install .NET SDK
+install_dotnet() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+
+  trap 'rm -rf "$tmp_dir"; info "Cleanup: Removed temporary directory for .NET SDK installation"' EXIT INT TERM
+
+  if ! cd "$tmp_dir"; then
+    error "Failed to create temporary directory"
+    trap - EXIT INT TERM
+    return 1
+  fi
+
+  info "Downloading .NET installation script..."
+  if ! curl -fsSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh; then
+    error "Failed to download .NET installation script"
+    trap - EXIT INT TERM
+    return 1
+  fi
+
+  chmod +x dotnet-install.sh
+  info "Installing .NET SDK..."
+  if ! ./dotnet-install.sh --channel LTS; then
+    error "Failed to install .NET SDK"
+    trap - EXIT INT TERM
+    return 1
+  fi
+
+  if ! command_exists dotnet && [ ! -f "$HOME/.dotnet/dotnet" ]; then
+    error ".NET SDK command not found after installation"
+    trap - EXIT INT TERM
+    return 1
+  fi
+
+  info ".NET SDK installed successfully"
+  trap - EXIT INT TERM
+  return 0
+}
+
+# =============================================================================
 # SUMMARY FUNCTIONS
 # =============================================================================
 
@@ -750,8 +757,7 @@ show_summary() {
     info "Or install failed components manually"
     return 1
   else
-    # Brief success message - main script will show final summary
-    success "macOS development tools installed successfully"
+    # Success - main script will show final summary
     return 0
   fi
 }
@@ -840,15 +846,6 @@ main() {
     info "GPG Suite setup complete"
   fi
 
-  # .NET SDK setup
-  section "Installing .NET SDK..."
-  if ! install_dotnet; then
-    warn ".NET SDK installation failed, but continuing"
-    SETUP_FAILURES+=(".NET SDK")
-  else
-    info ".NET SDK setup complete"
-  fi
-
   # Fork Git client setup
   section "Installing Fork Git client..."
   if ! install_fork; then
@@ -856,6 +853,15 @@ main() {
     SETUP_FAILURES+=("Fork Git client")
   else
     info "Fork Git client setup complete"
+  fi
+
+  # .NET SDK setup
+  section "Installing .NET SDK..."
+  if ! install_dotnet; then
+    warn ".NET SDK installation failed, but continuing"
+    SETUP_FAILURES+=(".NET SDK")
+  else
+    info ".NET SDK setup complete"
   fi
 
   # Show final summary

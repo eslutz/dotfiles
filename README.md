@@ -81,13 +81,16 @@ yes | ./install.sh
 
 ## Configuration Files
 
-| File         | Purpose/Features                                                            |
-| ------------ | --------------------------------------------------------------------------- |
-| `.gitconfig` | Git config (GPG signing, GitHub CLI, LFS, Unicode, performance tweaks)      |
-| `.gitignore` | Global ignore patterns for common system files                              |
-| `.vimrc`     | Vim config with syntax highlighting and mouse support                       |
-| `.zprofile`  | Login shell: PATH management, tool precedence, Homebrew/SDK/Azure CLI setup |
-| `.zshrc`     | Interactive shell: prompt, completions, aliases, Copilot, NVM, dev aliases  |
+The dotfiles are organized in the `dotfiles/` directory:
+
+| File           | Purpose/Features                                                            |
+| -------------- | --------------------------------------------------------------------------- |
+| `.editorconfig`| Editor consistency: indentation, encoding, line endings across all projects|
+| `.gitconfig`   | Git config (GPG signing, GitHub CLI, LFS, Unicode, performance tweaks)     |
+| `.gitignore`   | Global ignore patterns for common system files                             |
+| `.vimrc`       | Vim config with syntax highlighting and mouse support                      |
+| `.zprofile`    | Login shell: PATH management, tool precedence, Homebrew/SDK/Azure CLI setup|
+| `.zshrc`       | Interactive shell: prompt, completions, aliases, Copilot, NVM, dev aliases |
 
 ## Development Environment
 
@@ -144,7 +147,7 @@ yes | ./install.sh
 
 ## Customization
 
-- **Add new dotfiles:** Place your file in the repo root and run `./scripts/create_links.sh` (auto-detects new files). For always-linked files, add to `CORE_DOTFILES` in `create_links.sh`.
+- **Add new dotfiles:** Place your file in the `dotfiles/` directory and run `./scripts/create_links.sh` (auto-detects new files). For always-linked files, add to `CORE_DOTFILES` in `create_links.sh`.
 - **Edit configs:** Edit dotfiles in your home directory or the repo (symlinks keep them in sync). Commit and push to save changes.
 - **Shell customization:** `.zprofile` handles login shell, PATH, and env; `.zshrc` manages prompt, aliases, completions, and integrations.
 - **Tool customization:** Edit the formulas/casks arrays in `scripts/cli_initial_setup.sh` to add or remove Homebrew tools from the setup process.

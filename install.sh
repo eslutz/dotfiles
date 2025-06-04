@@ -36,22 +36,20 @@ declare -a FAILURES=()
 # shellcheck disable=SC1091
 source "${DOTFILES_DIR}/scripts/utilities.sh"
 
+# Validate we're not running as root
+validate_not_root || {
+  error "This script must be run as a regular user, not root"
+  exit 1
+}
+
+# Validate dotfiles directory exists and is readable
+validate_directory "$DOTFILES_DIR" "Dotfiles directory" || {
+  error "Cannot access dotfiles directory: $DOTFILES_DIR"
+  exit 1
+}
+
 # Set up exit trap
 trap show_summary EXIT
-
-# =============================================================================
-# ENVIRONMENT DETECTION
-# =============================================================================
-
-detect_environment() {
-  IS_MACOS=false
-  if [[ "$(uname)" == "Darwin" ]]; then
-    IS_MACOS=true
-    debug "macOS environment detected"
-  else
-    debug "Non-macOS environment detected: $(uname)"
-  fi
-}
 
 # =============================================================================
 # SUMMARY FUNCTIONS
@@ -118,11 +116,6 @@ setup_symbolic_links() {
 }
 
 setup_macos_environment() {
-  if [[ "$IS_MACOS" != "true" ]]; then
-    debug "Skipping macOS setup - not running on macOS"
-    return 0
-  fi
-
   subsection "Setting up macOS environment"
 
   # Ask if they want to run the full macOS setup
@@ -152,17 +145,16 @@ main() {
   info "This script will set up your development environment"
   info "Dotfiles location: $DOTFILES_DIR"
 
-  # Detect environment
-  detect_environment
-
-  if [[ "$IS_MACOS" == "true" ]]; then
-    info "macOS environment detected"
-  else
-    warn "Non-macOS environment detected. Some features may not work correctly"
+  # Validate system requirements first
+  info "Checking system requirements..."
+  if ! validate_system_requirements; then
+    error "System requirements not met. Please address the issues above and try again."
+    exit 1
   fi
+  success "System requirements validated"
 
   # Ask for confirmation before proceeding
-  if ! confirm "Continue with installation?" "N"; then
+  if ! confirm "Continue with installation?" "Y"; then
     error "Installation cancelled by user"
     exit 1
   fi
