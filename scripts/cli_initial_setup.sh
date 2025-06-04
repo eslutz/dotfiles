@@ -138,6 +138,9 @@ setup_homebrew() {
 # EARLY DEPENDENCY INSTALLATION
 # =============================================================================
 
+# Install jq if needed for parameter file processing
+# Usage: ensure_jq_available
+# Returns: 0 if jq is available or successfully installed, 1 otherwise
 ensure_jq_available() {
   # Install jq early if parameters file is provided and jq is not available
   if [[ -n "$PARAMETERS_FILE" ]] && ! command_exists jq; then
