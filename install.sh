@@ -94,23 +94,18 @@ show_summary() {
 setup_symbolic_links() {
   subsection "Setting up symbolic links for dotfiles"
 
-  # Execute the create_links.sh script and capture its exit status
-  # This script handles all the complex logic of linking dotfiles and creating backups
-  if ! "$DOTFILES_DIR/scripts/create_links.sh"; then
-    error "Failed to set up symbolic links"
-    FAILURES+=("Symbolic link setup failed")
-
-    # Give user choice to continue despite symlink failures
-    # Some installations might be partially recoverable
-    if ! confirm "Continue with the rest of the installation?" "N"; then
-      error "Installation aborted due to symbolic link errors"
-      exit 1
+  if confirm "Create symbolic links for dotfiles in your home directory?" "Y"; then
+    if ! "$DOTFILES_DIR/scripts/create_links.sh"; then
+      error "Failed to set up symbolic links"
+      FAILURES+=("Symbolic link setup failed")
+      return 1
     else
-      warn "Continuing despite symbolic link errors"
+      success "Symbolic links set up successfully!"
+      return 0
     fi
-    return 1
   else
-    success "Symbolic links set up successfully!"
+    info "Skipping symbolic link creation"
+    info "You can create the symbolic links later with: $DOTFILES_DIR/scripts/create_links.sh"
     return 0
   fi
 }
@@ -118,11 +113,9 @@ setup_symbolic_links() {
 setup_macos_environment() {
   subsection "Setting up macOS environment"
 
-  # Ask if they want to run the full macOS setup
-  if confirm "Install CLI tools and apps for macOS?" "N"; then
+  if confirm "Install CLI tools and apps for macOS?" "Y"; then
     if ! "$DOTFILES_DIR/scripts/cli_initial_setup.sh"; then
       error "Failed to complete macOS CLI setup"
-      info "You can run the setup script later with: $DOTFILES_DIR/scripts/cli_initial_setup.sh"
       FAILURES+=("macOS CLI setup failed")
       return 1
     else
@@ -152,12 +145,6 @@ main() {
     exit 1
   fi
   success "System requirements validated"
-
-  # Ask for confirmation before proceeding
-  if ! confirm "Continue with installation?" "Y"; then
-    error "Installation cancelled by user"
-    exit 1
-  fi
 
   # Set up symbolic links
   setup_symbolic_links
