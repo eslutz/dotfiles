@@ -6,8 +6,9 @@
 # Includes Homebrew, CLI tools, Node.js, .NET SDK, and GUI applications
 #
 # Usage:
-#   ./cli_initial_setup.sh          # Interactive setup with prompts
-#   DEBUG=1 ./cli_initial_setup.sh  # Enable debug output
+#   ./cli_initial_setup.sh                      # Interactive setup with prompts
+#   ./cli_initial_setup.sh --parameters file.json # Use parameters file for additional packages
+#   DEBUG=1 ./cli_initial_setup.sh              # Enable debug output
 #
 # This script will:
 #   1. Install and configure Homebrew package manager
@@ -18,6 +19,24 @@
 #   6. Configure proper permissions and compatibility settings
 
 set -euo pipefail
+
+# =============================================================================
+# OPTION PARSING
+# =============================================================================
+
+PARAMETERS_FILE=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --parameters)
+            PARAMETERS_FILE="$2"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 # =============================================================================
 # CONFIGURATION
@@ -211,14 +230,12 @@ install_homebrew_packages() {
     return 1
   fi
 
-  # Define package lists
+  # Core Homebrew forumlas
   local -a formulas=(
     # Version control and Git tools
     "bfg"
     "git"
     "git-lfs"
-    # Cloud and DevOps tools
-    "azure-cli"
     # Security and GPG tools
     "pinentry-mac"
     # System utilities
@@ -227,14 +244,41 @@ install_homebrew_packages() {
     "jq"
     "tree"
     "wget"
-    # Virtualization and development
-    "qemu"
   )
 
+  # Core Homebrew casks
   local -a casks=(
     "powershell"
-    "font-monaspace"
   )
+
+  # Add packages from parameters file if provided
+  if [[ -n "$PARAMETERS_FILE" ]] && command_exists jq; then
+    info "Reading additional packages from parameters file..."
+
+    # Add additional formulas
+    local additional_formulas
+    additional_formulas=$(jq -r '.brew.formulas[]? // empty' "$PARAMETERS_FILE" 2>/dev/null || true)
+    if [[ -n "$additional_formulas" ]]; then
+      while IFS= read -r formula; do
+        if [[ -n "$formula" ]] && [[ ! ${formulas[*]} =~ $formula ]]; then
+          info "Adding formula from parameters: $formula"
+          formulas+=("$formula")
+        fi
+      done <<< "$additional_formulas"
+    fi
+
+    # Add additional casks
+    local additional_casks
+    additional_casks=$(jq -r '.brew.casks[]? // empty' "$PARAMETERS_FILE" 2>/dev/null || true)
+    if [[ -n "$additional_casks" ]]; then
+      while IFS= read -r cask; do
+        if [[ -n "$cask" ]] && [[ ! ${casks[*]} =~ $cask ]]; then
+          info "Adding cask from parameters: $cask"
+          casks+=("$cask")
+        fi
+      done <<< "$additional_casks"
+    fi
+  fi
 
   info "Installing ${#formulas[@]} formulas and ${#casks[@]} casks..."
 

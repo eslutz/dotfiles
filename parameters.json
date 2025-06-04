@@ -1,0 +1,13 @@
+{
+  "gitconfig": {
+    "user": {
+      "name": "Eric Slutz",
+      "email": "eric.slutz@icloud.com",
+      "signingkey": "73972EAEA22EB186"
+    }
+  },
+  "brew": {
+    "formulas": ["azure-cli", "qemu"],
+    "casks": ["font-monaspace"]
+  }
+}

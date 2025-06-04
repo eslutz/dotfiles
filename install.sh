@@ -6,8 +6,11 @@
 # Creates symbolic links and optionally installs development tools
 #
 # Usage:
-#   ./install.sh                    # Interactive installation
-#   DEBUG=1 ./install.sh            # Enable debug output
+#   ./install.sh                              # Interactive installation
+#   ./install.sh -y                           # Non-interactive (accept all defaults)
+#   ./install.sh -p parameters.json           # Use parameters file
+#   ./install.sh -y -p parameters.json        # Non-interactive with parameters
+#   DEBUG=1 ./install.sh                      # Enable debug output
 #
 # This script will:
 #   1. Create symbolic links for dotfiles
@@ -28,6 +31,59 @@ readonly DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Initialize failures array to track setup issues
 declare -a FAILURES=()
 
+# Script options
+NON_INTERACTIVE=false
+PARAMETERS_FILE=""
+
+# =============================================================================
+# OPTION PARSING
+# =============================================================================
+
+usage() {
+    cat << EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -y, --yes           Run non-interactively (accept all defaults)
+    -p, --parameters    Path to parameters JSON file
+    -h, --help          Show this help message
+
+EXAMPLES:
+    $0                          # Interactive installation
+    $0 -y                       # Non-interactive installation
+    $0 -p parameters.json       # Use parameters file
+    $0 -y -p parameters.json    # Non-interactive with parameters
+
+EOF
+}
+
+# Parse command line options
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -y|--yes)
+            NON_INTERACTIVE=true
+            shift
+            ;;
+        -p|--parameters)
+            PARAMETERS_FILE="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+# Export these for child scripts
+export NON_INTERACTIVE
+export PARAMETERS_FILE
+
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
@@ -35,6 +91,43 @@ declare -a FAILURES=()
 # Source shared utilities (output formatting and helper functions)
 # shellcheck disable=SC1091
 source "${DOTFILES_DIR}/scripts/utilities.sh"
+
+# Override confirm function for non-interactive mode
+if [[ "$NON_INTERACTIVE" == "true" ]]; then
+    # Override with auto-yes version
+    confirm() {
+        local prompt="$1"
+        local default="${2:-Y}"
+
+        if [[ "$default" =~ ^[Yy]$ ]]; then
+            info "$prompt [Y/n] Y (auto-accepted)"
+            return 0
+        else
+            info "$prompt [y/N] N (auto-declined)"
+            return 1
+        fi
+    }
+fi
+
+# Validate parameters file if provided
+if [[ -n "$PARAMETERS_FILE" ]]; then
+    if [[ ! -f "$PARAMETERS_FILE" ]]; then
+        error "Parameters file not found: $PARAMETERS_FILE"
+        exit 1
+    fi
+
+    # Validate JSON syntax
+    if ! command_exists jq; then
+        warn "jq not installed. Cannot validate parameters file syntax."
+        warn "Parameters file will be passed to child scripts for processing."
+    else
+        if ! jq empty "$PARAMETERS_FILE" 2>/dev/null; then
+            error "Invalid JSON in parameters file: $PARAMETERS_FILE"
+            exit 1
+        fi
+        info "Parameters file validated: $PARAMETERS_FILE"
+    fi
+fi
 
 # Validate we're not running as root
 validate_not_root || {
@@ -95,7 +188,14 @@ setup_symbolic_links() {
   subsection "Setting up symbolic links for dotfiles"
 
   if confirm "Create symbolic links for dotfiles in your home directory?" "Y"; then
-    if ! "$DOTFILES_DIR/scripts/create_links.sh"; then
+    local cmd="$DOTFILES_DIR/scripts/create_links.sh"
+
+    # Pass parameters file if provided
+    if [[ -n "$PARAMETERS_FILE" ]]; then
+      cmd="$cmd --parameters '$PARAMETERS_FILE'"
+    fi
+
+    if ! eval "$cmd"; then
       error "Failed to set up symbolic links"
       FAILURES+=("Symbolic link setup failed")
       return 1
@@ -114,7 +214,14 @@ setup_macos_environment() {
   subsection "Setting up macOS environment"
 
   if confirm "Install CLI tools and apps for macOS?" "Y"; then
-    if ! "$DOTFILES_DIR/scripts/cli_initial_setup.sh"; then
+    local cmd="$DOTFILES_DIR/scripts/cli_initial_setup.sh"
+
+    # Pass parameters file if provided
+    if [[ -n "$PARAMETERS_FILE" ]]; then
+      cmd="$cmd --parameters '$PARAMETERS_FILE'"
+    fi
+
+    if ! eval "$cmd"; then
       error "Failed to complete macOS CLI setup"
       FAILURES+=("macOS CLI setup failed")
       return 1

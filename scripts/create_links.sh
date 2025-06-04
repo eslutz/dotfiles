@@ -6,16 +6,37 @@
 # Automatically backs up existing files before creating links
 #
 # Usage:
-#   ./create_links.sh               # Interactive linking with prompts
-#   DEBUG=1 ./create_links.sh      # Enable debug output
+#   ./create_links.sh                           # Interactive linking with prompts
+#   ./create_links.sh --parameters file.json    # Process templates before linking
+#   DEBUG=1 ./create_links.sh                   # Enable debug output
 #
 # This script will:
-#   1. Link core dotfiles (.gitconfig, .zshrc, etc.)
-#   2. Discover and optionally link additional dotfiles
-#   3. Create timestamped backups of existing files
-#   4. Provide detailed feedback on each operation
+#   1. Process templates if parameters file provided
+#   2. Link core dotfiles (.gitconfig, .zshrc, etc.)
+#   3. Discover and optionally link additional dotfiles
+#   4. Create timestamped backups of existing files
+#   5. Provide detailed feedback on each operation
 
 set -euo pipefail
+
+# =============================================================================
+# OPTION PARSING
+# =============================================================================
+
+PARAMETERS_FILE=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --parameters)
+            PARAMETERS_FILE="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
 
 # =============================================================================
 # CONFIGURATION
@@ -318,6 +339,31 @@ find_additional_dotfiles() {
 }
 
 # =============================================================================
+# TEMPLATE PROCESSING
+# =============================================================================
+
+process_templates_if_needed() {
+    if [[ -n "$PARAMETERS_FILE" ]]; then
+        subsection "Processing templates with parameters"
+
+        local template_processor="$SCRIPT_DIR/process_templates.sh"
+        if [[ -x "$template_processor" ]]; then
+            if "$template_processor" "$PARAMETERS_FILE"; then
+                success "Templates processed successfully"
+                return 0
+            else
+                error "Failed to process templates"
+                return 1
+            fi
+        else
+            warn "Template processor not found or not executable: $template_processor"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# =============================================================================
 # MAIN LINKING PROCESS
 # =============================================================================
 
@@ -325,6 +371,12 @@ main() {
   info "Starting dotfile linking process..."
   info "Source directory: $DOTFILES_DIR"
   info "Target directory: $HOME"
+
+  # Process templates if parameters file provided
+  if ! process_templates_if_needed; then
+    error "Failed to process templates"
+    exit 1
+  fi
 
   # Validate required dotfiles exist
   if ! validate_dotfiles; then
