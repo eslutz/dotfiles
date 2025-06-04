@@ -177,11 +177,13 @@ main() {
   info "Project root: $PROJECT_ROOT"
   info "Test directory: $TESTS_DIR"
 
-  # Validate system requirements for testing
-  validate_system_requirements || {
-    error "System requirements not met for testing"
-    exit 1
-  }
+  # Validate system requirements for integration/system tests only
+  if [[ "$test_category" != "unit" ]]; then
+    validate_system_requirements || {
+      error "System requirements not met for testing"
+      exit 1
+    }
+  fi
 
   case "$test_category" in
     "all")

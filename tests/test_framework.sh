@@ -335,3 +335,127 @@ assert_mock_called() {
     return 1
   fi
 }
+# =============================================================================
+# ADDITIONAL ASSERTION FUNCTIONS
+# =============================================================================
+
+# Assert that a command succeeds (exit code 0)
+assert_command_succeeds() {
+  local command="$1"
+  local description="${2:-Command should succeed}"
+
+  ((ASSERTION_COUNT++))
+
+  if eval "$command" >/dev/null 2>&1; then
+    echo "✓ $description"
+    return 0
+  else
+    echo "✗ $description"
+    echo "  Command failed: $command"
+    ((ASSERTION_FAILURES++))
+    return 1
+  fi
+}
+
+# Assert that a command fails (non-zero exit code)
+assert_command_fails() {
+  local command="$1"
+  local description="${2:-Command should fail}"
+
+  ((ASSERTION_COUNT++))
+
+  if eval "$command" >/dev/null 2>&1; then
+    echo "✗ $description"
+    echo "  Command unexpectedly succeeded: $command"
+    ((ASSERTION_FAILURES++))
+    return 1
+  else
+    echo "✓ $description"
+    return 0
+  fi
+}
+
+# Assert that a string contains a substring
+assert_contains() {
+  local haystack="$1"
+  local needle="$2"
+  local description="${3:-String should contain substring}"
+
+  ((ASSERTION_COUNT++))
+
+  if [[ "$haystack" == *"$needle"* ]]; then
+    echo "✓ $description"
+    return 0
+  else
+    echo "✗ $description"
+    echo "  String: '$haystack'"
+    echo "  Should contain: '$needle'"
+    ((ASSERTION_FAILURES++))
+    return 1
+  fi
+}
+
+# Assert that a string does not contain a substring
+assert_not_contains() {
+  local haystack="$1"
+  local needle="$2"
+  local description="${3:-String should not contain substring}"
+
+  ((ASSERTION_COUNT++))
+
+  if [[ "$haystack" != *"$needle"* ]]; then
+    echo "✓ $description"
+    return 0
+  else
+    echo "✗ $description"
+    echo "  String: '$haystack'"
+    echo "  Should not contain: '$needle'"
+    ((ASSERTION_FAILURES++))
+    return 1
+  fi
+}
+
+# Assert that a function exists
+assert_function_exists() {
+  local function_name="$1"
+  local description="${2:-Function should exist}"
+
+  ((ASSERTION_COUNT++))
+
+  if declare -f "$function_name" >/dev/null 2>&1; then
+    echo "✓ $description"
+    return 0
+  else
+    echo "✗ $description"
+    echo "  Function not found: $function_name"
+    ((ASSERTION_FAILURES++))
+    return 1
+  fi
+}
+
+# =============================================================================
+# TEST SUITE FUNCTIONS
+# =============================================================================
+
+# Start a test suite
+start_test_suite() {
+  local suite_name="$1"
+  
+  section "Starting Test Suite: $suite_name"
+  reset_test_counters
+}
+
+# End a test suite with summary
+end_test_suite() {
+  local suite_name="${1:-Test Suite}"
+  
+  echo
+  if [[ $ASSERTION_FAILURES -eq 0 ]]; then
+    success "✓ $suite_name completed successfully"
+    success "Assertions: $ASSERTION_COUNT passed, 0 failed"
+  else
+    error "✗ $suite_name completed with failures"
+    error "Assertions: $((ASSERTION_COUNT - ASSERTION_FAILURES)) passed, $ASSERTION_FAILURES failed"
+    exit 1
+  fi
+}

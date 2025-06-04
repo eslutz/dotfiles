@@ -1,0 +1,10 @@
+{
+  "test_config": {
+    "name": "Test Configuration",
+    "version": "1.0.0",
+    "settings": {
+      "debug": false,
+      "theme": "default"
+    }
+  }
+}
