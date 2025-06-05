@@ -54,8 +54,11 @@ cd ~/.dotfiles
 # Enable debug output for troubleshooting
 DEBUG=1 ./install.sh
 
-# Non-interactive installation
-./install.sh --non-interactive
+# Non-interactive installation (default behavior)
+./install.sh
+
+# Interactive installation with prompts
+./install.sh --interactive
 
 # Just create symbolic links (skip development tools)
 ./scripts/create_links.sh

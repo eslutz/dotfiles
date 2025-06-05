@@ -6,10 +6,10 @@
 # Creates symbolic links and optionally installs development tools
 #
 # Usage:
-#   ./install.sh                              # Interactive installation
-#   ./install.sh --non-interactive            # Non-interactive (accept all defaults)
-#   ./install.sh -p parameters.json           # Use parameters file
-#   ./install.sh --non-interactive -p parameters.json  # Non-interactive with parameters
+#   ./install.sh                              # Non-interactive installation (default)
+#   ./install.sh --interactive                # Interactive installation with prompts
+#   ./install.sh -p parameters.json           # Use parameters file (non-interactive)
+#   ./install.sh --interactive -p parameters.json  # Interactive with parameters
 #   DEBUG=1 ./install.sh                      # Enable debug output
 #
 # This script will:
@@ -32,7 +32,7 @@ readonly DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -a FAILURES=()
 
 # Script options
-NON_INTERACTIVE=false
+NON_INTERACTIVE=true  # Non-interactive is the default
 PARAMETERS_FILE=""
 
 # =============================================================================
@@ -44,16 +44,17 @@ usage() {
 Usage: $0 [OPTIONS]
 
 OPTIONS:
-    -y, --yes                Run non-interactively (accept all defaults) [deprecated, use --non-interactive]
-    --non-interactive        Run non-interactively (accept all defaults)
+    -i, --interactive        Run interactively (prompt for confirmations)
+    -y, --yes                Run non-interactively (accept all defaults) [deprecated, default behavior]
+    --non-interactive        Run non-interactively (accept all defaults) [deprecated, default behavior]
     -p, --parameters         Path to parameters JSON file
     -h, --help               Show this help message
 
 EXAMPLES:
-    $0                              # Interactive installation
-    $0 --non-interactive            # Non-interactive installation
-    $0 -p parameters.json           # Use parameters file
-    $0 --non-interactive -p parameters.json  # Non-interactive with parameters
+    $0                              # Non-interactive installation (default)
+    $0 --interactive                # Interactive installation with prompts
+    $0 -p parameters.json           # Use parameters file (non-interactive)
+    $0 --interactive -p parameters.json  # Interactive with parameters
 
 EOF
 }
@@ -61,8 +62,17 @@ EOF
 # Parse command line options
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -i|--interactive)
+            NON_INTERACTIVE=false
+            shift
+            ;;
         -y|--yes|--non-interactive)
+            # These maintain non-interactive mode (already the default)
             NON_INTERACTIVE=true
+            if [[ "$1" == "-y" || "$1" == "--yes" ]]; then
+                warn "Flag $1 is deprecated and will be removed in a future version"
+                warn "Non-interactive mode is now the default behavior"
+            fi
             shift
             ;;
         -p|--parameters)
@@ -95,7 +105,7 @@ source "${DOTFILES_DIR}/scripts/utilities.sh"
 
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then
-    # Override with auto-yes version
+    # Override with auto-yes version for non-interactive mode
     confirm() {
         local prompt="$1"
         local default="${2:-Y}"
@@ -182,6 +192,34 @@ show_summary() {
 }
 
 # =============================================================================
+# EARLY DEPENDENCY FUNCTIONS
+# =============================================================================
+
+# Install jq if needed for parameter file processing
+# Usage: ensure_jq_available
+# Returns: 0 if jq is available or successfully installed, 1 otherwise
+ensure_jq_available() {
+  # Install jq early if parameters file is provided and jq is not available
+  if [[ -n "$PARAMETERS_FILE" ]] && ! command_exists jq; then
+    info "jq is required for processing parameters file, installing early..."
+    
+    if ! command_exists brew; then
+      warn "Homebrew not available, cannot install jq. Parameter file processing will be skipped."
+      return 1
+    fi
+    
+    if brew install jq; then
+      success "jq installed successfully"
+      return 0
+    else
+      warn "Failed to install jq. Parameter file processing will be skipped."
+      return 1
+    fi
+  fi
+  return 0
+}
+
+# =============================================================================
 # INSTALLATION FUNCTIONS
 # =============================================================================
 
@@ -253,6 +291,11 @@ main() {
     exit 1
   fi
   success "System requirements validated"
+
+  # Ensure jq is available if parameter files are used (needed by create_links.sh)
+  if ! ensure_jq_available; then
+    warn "jq installation failed, parameter file processing may be limited"
+  fi
 
   # Set up symbolic links
   setup_symbolic_links

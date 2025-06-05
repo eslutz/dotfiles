@@ -33,7 +33,12 @@ while [[ $# -gt 0 ]]; do
             PARAMETERS_FILE="$2"
             shift 2
             ;;
+        --interactive)
+            NON_INTERACTIVE=false
+            shift
+            ;;
         --non-interactive)
+            # Maintain non-interactive mode (already the default)
             NON_INTERACTIVE=true
             shift
             ;;
@@ -51,8 +56,8 @@ done
 declare -a SETUP_FAILURES
 SETUP_FAILURES=()
 
-# Script options - default to interactive mode
-NON_INTERACTIVE="${NON_INTERACTIVE:-false}"
+# Script options - default to non-interactive mode
+NON_INTERACTIVE="${NON_INTERACTIVE:-true}"
 
 # =============================================================================
 # INITIALIZATION
