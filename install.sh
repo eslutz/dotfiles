@@ -34,6 +34,7 @@ declare -a FAILURES=()
 # Script options
 NON_INTERACTIVE=true  # Non-interactive is the default
 PARAMETERS_FILE=""
+DEPRECATED_FLAG_USED=""
 
 # =============================================================================
 # OPTION PARSING
@@ -70,8 +71,7 @@ while [[ $# -gt 0 ]]; do
             # These maintain non-interactive mode (already the default)
             NON_INTERACTIVE=true
             if [[ "$1" == "-y" || "$1" == "--yes" ]]; then
-                warn "Flag $1 is deprecated and will be removed in a future version"
-                warn "Non-interactive mode is now the default behavior"
+                DEPRECATED_FLAG_USED="$1"
             fi
             shift
             ;;
@@ -102,6 +102,12 @@ export PARAMETERS_FILE
 # Source shared utilities (output formatting and helper functions)
 # shellcheck disable=SC1091
 source "${DOTFILES_DIR}/scripts/utilities.sh"
+
+# Show deprecation warning if needed
+if [[ -n "$DEPRECATED_FLAG_USED" ]]; then
+    warn "Flag $DEPRECATED_FLAG_USED is deprecated and will be removed in a future version"
+    warn "Non-interactive mode is now the default behavior"
+fi
 
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then
