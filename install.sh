@@ -34,7 +34,6 @@ declare -a FAILURES=()
 # Script options
 NON_INTERACTIVE=true  # Non-interactive is the default
 PARAMETERS_FILE=""
-DEPRECATED_FLAG_USED=""
 
 # =============================================================================
 # OPTION PARSING
@@ -46,8 +45,7 @@ Usage: $0 [OPTIONS]
 
 OPTIONS:
     -i, --interactive        Run interactively (prompt for confirmations)
-    -y, --yes                Run non-interactively (accept all defaults) [deprecated, default behavior]
-    --non-interactive        Run non-interactively (accept all defaults) [deprecated, default behavior]
+    --non-interactive        Run non-interactively (accept all defaults)
     -p, --parameters         Path to parameters JSON file
     -h, --help               Show this help message
 
@@ -67,12 +65,9 @@ while [[ $# -gt 0 ]]; do
             NON_INTERACTIVE=false
             shift
             ;;
-        -y|--yes|--non-interactive)
-            # These maintain non-interactive mode (already the default)
+        --non-interactive)
+            # Maintain non-interactive mode (already the default)
             NON_INTERACTIVE=true
-            if [[ "$1" == "-y" || "$1" == "--yes" ]]; then
-                DEPRECATED_FLAG_USED="$1"
-            fi
             shift
             ;;
         -p|--parameters)
@@ -103,15 +98,9 @@ export PARAMETERS_FILE
 # shellcheck disable=SC1091
 source "${DOTFILES_DIR}/scripts/utilities.sh"
 
-# Show deprecation warning if needed
-if [[ -n "$DEPRECATED_FLAG_USED" ]]; then
-    warn "Flag $DEPRECATED_FLAG_USED is deprecated and will be removed in a future version"
-    warn "Non-interactive mode is now the default behavior"
-fi
-
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then
-    # Override with auto-yes version for non-interactive mode
+    # Override with auto-accept version for non-interactive mode
     confirm() {
         local prompt="$1"
         local default="${2:-Y}"
@@ -198,34 +187,6 @@ show_summary() {
 }
 
 # =============================================================================
-# EARLY DEPENDENCY FUNCTIONS
-# =============================================================================
-
-# Install jq if needed for parameter file processing
-# Usage: ensure_jq_available
-# Returns: 0 if jq is available or successfully installed, 1 otherwise
-ensure_jq_available() {
-  # Install jq early if parameters file is provided and jq is not available
-  if [[ -n "$PARAMETERS_FILE" ]] && ! command_exists jq; then
-    info "jq is required for processing parameters file, installing early..."
-    
-    if ! command_exists brew; then
-      warn "Homebrew not available, cannot install jq. Parameter file processing will be skipped."
-      return 1
-    fi
-    
-    if brew install jq; then
-      success "jq installed successfully"
-      return 0
-    else
-      warn "Failed to install jq. Parameter file processing will be skipped."
-      return 1
-    fi
-  fi
-  return 0
-}
-
-# =============================================================================
 # INSTALLATION FUNCTIONS
 # =============================================================================
 
@@ -298,16 +259,11 @@ main() {
   fi
   success "System requirements validated"
 
-  # Ensure jq is available if parameter files are used (needed by create_links.sh)
-  if ! ensure_jq_available; then
-    warn "jq installation failed, parameter file processing may be limited"
-  fi
-
-  # Set up symbolic links
-  setup_symbolic_links
-
-  # macOS-specific setup
+  # macOS-specific setup (installs Homebrew and essential tools including jq)
   setup_macos_environment
+
+  # Set up symbolic links (now that jq is available for template processing)
+  setup_symbolic_links
 }
 
 # =============================================================================

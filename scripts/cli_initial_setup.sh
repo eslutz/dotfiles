@@ -69,7 +69,7 @@ source "$(dirname "$0")/utilities.sh"
 
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then
-    # Override with auto-yes version
+    # Override with auto-accept version
     confirm() {
         local prompt="$1"
         local default="${2:-Y}"
