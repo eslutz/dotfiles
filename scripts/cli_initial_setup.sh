@@ -64,7 +64,10 @@ source "$(dirname "$0")/utilities.sh"
 
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then
-    # Override with auto-accept version
+    # Override with auto-accept version for non-interactive mode
+    # Usage: confirm "prompt text" "default_option"
+    # Arguments: prompt - question text, default - Y or N default choice
+    # Returns: 0 if default is Y, 1 if default is N
     confirm() {
         local prompt="$1"
         local default="${2:-Y}"
@@ -92,6 +95,9 @@ trap show_summary EXIT
 # HOMEBREW INSTALLATION AND SETUP
 # =============================================================================
 
+# Install and configure Homebrew package manager for macOS
+# Usage: setup_homebrew
+# Returns: 0 on success, 1 on failure
 setup_homebrew() {
   subsection "Setting up Homebrew"
 

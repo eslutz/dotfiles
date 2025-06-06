@@ -34,39 +34,60 @@ readonly NORMAL="\033[0m"
 # OUTPUT FUNCTIONS
 # =============================================================================
 
-# Print informational message
+# Print informational message with green color coding
+# Usage: info "This is an informational message"
+# Arguments: message text to display
+# Returns: always 0
 info() {
   printf "%b\\n" "${BOLD}${GREEN}[INFO]${NORMAL} $*"
 }
 
-# Print warning message
+# Print warning message with yellow color coding
+# Usage: warn "This is a warning message"
+# Arguments: message text to display
+# Returns: always 0
 warn() {
   printf "%b\\n" "${BOLD}${YELLOW}[WARN]${NORMAL} $*"
 }
 
-# Print error message
+# Print error message with red color coding
+# Usage: error "This is an error message"
+# Arguments: message text to display
+# Returns: always 0
 error() {
   printf "%b\\n" "${BOLD}${RED}[ERROR]${NORMAL} $*"
 }
 
-# Print success message
+# Print success message with green color coding
+# Usage: success "Operation completed successfully"
+# Arguments: message text to display
+# Returns: always 0
 success() {
   printf "%b\\n" "${BOLD}${GREEN}[SUCCESS]${NORMAL} $*"
 }
 
-# Print debug message (only if DEBUG is set)
+# Print debug message (only when DEBUG environment variable is set to 1)
+# Usage: debug "Debug information: $variable"
+# Arguments: message text to display
+# Returns: always 0
 debug() {
   if [[ "${DEBUG:-}" == "1" ]]; then
     printf "%b\\n" "${CYAN}[DEBUG]${NORMAL} $*"
   fi
 }
 
-# Print section header
+# Print formatted section header for organizing output
+# Usage: section "Installation Phase"
+# Arguments: section title text
+# Returns: always 0
 section() {
   printf "\\n%b\\n" "${BOLD}${BLUE}=== $* ===${NORMAL}"
 }
 
-# Print subsection header
+# Print formatted subsection header for organizing output
+# Usage: subsection "Setting up dependencies"
+# Arguments: subsection title text
+# Returns: always 0
 subsection() {
   printf "\\n%b\\n" "${BLUE}--- $* ---${NORMAL}"
 }
@@ -240,10 +261,10 @@ validate_system_requirements() {
   return 0
 }
 
-# Sanitize user input by removing dangerous characters
+# Sanitize user input by removing potentially dangerous characters
 # Usage: sanitized=$(sanitize_input "$user_input")
-# Arguments: input_string
-# Returns: sanitized string
+# Arguments: input_string - the string to sanitize
+# Returns: always 0, outputs sanitized string to stdout
 sanitize_input() {
   local input="$1"
   # Remove or escape potentially dangerous characters
@@ -253,9 +274,9 @@ sanitize_input() {
 
 # Get user confirmation with default option
 # Usage: confirm "Continue?" "Y" && echo "User confirmed"
-# Arguments: prompt_text [default_option]
+# Arguments: prompt_text - the question to ask user
+#           default_option - default choice (Y or N), defaults to N
 # Returns: 0 if user confirms (Y/y), 1 otherwise
-# Default option: N if not specified
 confirm() {
   local prompt="$1"
   local default="${2:-N}"

@@ -25,7 +25,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES_DIR="$(cd "$SCRIPT_DIR/../dotfiles" && pwd)"
 TEMPLATES_DIR="$(cd "$SCRIPT_DIR/../templates" && pwd)"
 
-# Function to process a template file
+# Process a template file by substituting placeholders with values from parameters
+# Usage: process_template "/path/to/template.tmpl" "/path/to/output.conf" "/path/to/params.json"
+# Arguments: template_file - path to template file
+#           output_file - path where processed file will be written
+#           params_json - path to JSON parameters file
+# Returns: 0 on success, 1 on failure
 process_template() {
     local template_file="$1"
     local output_file="$2"
@@ -64,7 +69,9 @@ process_template() {
     success "Processed: $(basename "$output_file")"
 }
 
-# Main processing
+# Main processing function to handle all template files
+# Usage: main
+# Returns: 0 on success, exits on failure
 main() {
     info "Processing templates with parameters from: $PARAMETERS_FILE"
 

@@ -104,7 +104,9 @@ trap show_summary EXIT
 # UTILITY FUNCTIONS
 # =============================================================================
 
-# Create backup directory if it doesn't exist
+# Create backup directory with timestamp if it doesn't exist
+# Usage: create_backup_dir
+# Returns: 0 on success, 1 on failure
 create_backup_dir() {
   if [[ ! -d "$BACKUP_DIR" ]]; then
     if mkdir -p "$BACKUP_DIR"; then
@@ -122,9 +124,11 @@ create_backup_dir() {
 # LINK CREATION FUNCTIONS
 # =============================================================================
 
-# Function to create a symbolic link with backup support
-# Handles existing files/directories and ensures atomic operations
-# Arguments: src (source file), dest (destination path)
+# Create a symbolic link with backup support and validation
+# Usage: link_file "/path/to/source" "/path/to/destination"
+# Arguments: src - source file path to link from
+#           dest - destination path where symlink will be created
+# Returns: 0 on success, 1 on failure
 link_file() {
   local src="$1"
   local dest="$2"
@@ -192,7 +196,10 @@ link_file() {
   fi
 }
 
-# Function to link all dotfiles in the given array
+# Link all dotfiles in the provided array to home directory
+# Usage: link_dotfiles "${files_array[@]}"
+# Arguments: file_list - array of dotfile names to link
+# Returns: 0 on success (even if some links fail)
 link_dotfiles() {
   local -a file_list=("$@")
   local success_count=0
@@ -232,7 +239,9 @@ link_dotfiles() {
 # VALIDATION FUNCTIONS
 # =============================================================================
 
-# Validate that required files exist
+# Validate that all required core dotfiles exist in the repository
+# Usage: validate_dotfiles
+# Returns: 0 if all core files exist, 1 if any are missing
 validate_dotfiles() {
   local missing_files=()
 
@@ -263,6 +272,9 @@ validate_dotfiles() {
 # SUMMARY FUNCTIONS
 # =============================================================================
 
+# Display summary of linking operations and backup information
+# Usage: show_summary
+# Returns: 0 if no failures, 1 if there were failures
 show_summary() {
   # Only show detailed summary if there were issues
   # Success case is handled by main install script
@@ -295,9 +307,9 @@ show_summary() {
 # UTILITY FUNCTIONS
 # =============================================================================
 
-# Find additional dotfiles not in the core list
-# Discovers dotfiles in the repository that aren't in CORE_DOTFILES array
-# Returns a list of potential additional dotfiles for optional linking
+# Find additional dotfiles not in the core list for optional linking
+# Usage: find_additional_dotfiles
+# Returns: always 0, outputs discovered files to stdout
 find_additional_dotfiles() {
   local -a additional_dotfiles=()
 
@@ -342,6 +354,9 @@ find_additional_dotfiles() {
 # TEMPLATE PROCESSING
 # =============================================================================
 
+# Process templates if parameters file is provided
+# Usage: process_templates_if_needed
+# Returns: 0 on success or if no processing needed, 1 on failure
 process_templates_if_needed() {
     if [[ -n "$PARAMETERS_FILE" ]]; then
         subsection "Processing templates with parameters"
@@ -367,6 +382,9 @@ process_templates_if_needed() {
 # MAIN LINKING PROCESS
 # =============================================================================
 
+# Main function to orchestrate the complete linking process
+# Usage: main
+# Returns: exits with 0 on success, 1 on failure
 main() {
   info "Starting dotfile linking process..."
   info "Source directory: $DOTFILES_DIR"

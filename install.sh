@@ -39,6 +39,9 @@ PARAMETERS_FILE=""
 # OPTION PARSING
 # =============================================================================
 
+# Display usage information and available options
+# Usage: usage
+# Returns: always 0
 usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
@@ -95,6 +98,9 @@ source "${DOTFILES_DIR}/scripts/utilities.sh"
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then
     # Override with auto-accept version for non-interactive mode
+    # Usage: confirm "prompt text" "default_option"
+    # Arguments: prompt - question text, default - Y or N default choice
+    # Returns: 0 if default is Y, 1 if default is N
     confirm() {
         local prompt="$1"
         local default="${2:-Y}"
@@ -148,6 +154,9 @@ trap show_summary EXIT
 # SUMMARY FUNCTIONS
 # =============================================================================
 
+# Display installation summary with backup information and failure details
+# Usage: show_summary
+# Returns: 0 if no failures, 1 if there were failures
 show_summary() {
   section "Dotfiles Installation Complete"
 
@@ -184,6 +193,9 @@ show_summary() {
 # INSTALLATION FUNCTIONS
 # =============================================================================
 
+# Set up symbolic links for dotfiles by calling create_links.sh
+# Usage: setup_symbolic_links
+# Returns: 0 on success, 1 on failure
 setup_symbolic_links() {
   subsection "Setting up symbolic links for dotfiles"
 
@@ -210,6 +222,9 @@ setup_symbolic_links() {
   fi
 }
 
+# Set up macOS development environment by calling cli_initial_setup.sh
+# Usage: setup_macos_environment
+# Returns: 0 on success, 1 on failure
 setup_macos_environment() {
   subsection "Setting up macOS environment"
 
@@ -240,6 +255,9 @@ setup_macos_environment() {
 # MAIN INSTALLATION PROCESS
 # =============================================================================
 
+# Main installation function to orchestrate the complete setup process
+# Usage: main
+# Returns: exits with code based on success/failure of operations
 main() {
   section "Welcome to Dotfiles Setup"
   info "This script will set up your development environment"

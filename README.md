@@ -41,10 +41,10 @@ The installation script will:
 
 ```bash
 # Clone the repository to your home directory
-git clone https://github.com/ericslutz/.dotfiles.git ~/.dotfiles
+git clone https://github.com/eslutz/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 
-# Full interactive installation
+# Non-interactive installation (default behavior)
 ./install.sh
 ```
 
@@ -243,6 +243,7 @@ dotnet --version
 
 ```bash
 # Check current PATH
+echo $PATH
 
 # Manually clean PATH duplicates
 export PATH=$(echo $PATH | tr ':' '\n' | awk '!seen[$0]++' | tr '\n' ':' | sed 's/:$//')
