@@ -6,8 +6,8 @@
 # Includes Homebrew, CLI tools, Node.js, .NET SDK, and GUI applications
 #
 # Usage:
-#   ./cli_initial_setup.sh                              # Interactive setup with prompts
-#   ./cli_initial_setup.sh --non-interactive            # Non-interactive setup
+#   ./cli_initial_setup.sh                              # Non-interactive setup (default)
+#   ./cli_initial_setup.sh --interactive                # Interactive setup with prompts
 #   ./cli_initial_setup.sh --parameters file.json       # Use parameters file for additional packages
 #   DEBUG=1 ./cli_initial_setup.sh                      # Enable debug output
 #
@@ -35,11 +35,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --interactive)
             NON_INTERACTIVE=false
-            shift
-            ;;
-        --non-interactive)
-            # Maintain non-interactive mode (already the default)
-            NON_INTERACTIVE=true
             shift
             ;;
         *)

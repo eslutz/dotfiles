@@ -45,7 +45,6 @@ Usage: $0 [OPTIONS]
 
 OPTIONS:
     -i, --interactive        Run interactively (prompt for confirmations)
-    --non-interactive        Run non-interactively (accept all defaults)
     -p, --parameters         Path to parameters JSON file
     -h, --help               Show this help message
 
@@ -63,11 +62,6 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         -i|--interactive)
             NON_INTERACTIVE=false
-            shift
-            ;;
-        --non-interactive)
-            # Maintain non-interactive mode (already the default)
-            NON_INTERACTIVE=true
             shift
             ;;
         -p|--parameters)
