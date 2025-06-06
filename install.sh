@@ -6,10 +6,10 @@
 # Creates symbolic links and optionally installs development tools
 #
 # Usage:
-#   ./install.sh                              # Interactive installation
-#   ./install.sh -y                           # Non-interactive (accept all defaults)
-#   ./install.sh -p parameters.json           # Use parameters file
-#   ./install.sh -y -p parameters.json        # Non-interactive with parameters
+#   ./install.sh                              # Non-interactive installation (default)
+#   ./install.sh --interactive                # Interactive installation with prompts
+#   ./install.sh -p parameters.json           # Use parameters file (non-interactive)
+#   ./install.sh --interactive -p parameters.json  # Interactive with parameters
 #   DEBUG=1 ./install.sh                      # Enable debug output
 #
 # This script will:
@@ -32,27 +32,30 @@ readonly DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -a FAILURES=()
 
 # Script options
-NON_INTERACTIVE=false
+NON_INTERACTIVE=true  # Non-interactive is the default
 PARAMETERS_FILE=""
 
 # =============================================================================
 # OPTION PARSING
 # =============================================================================
 
+# Display usage information and available options
+# Usage: usage
+# Returns: always 0
 usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
 OPTIONS:
-    -y, --yes           Run non-interactively (accept all defaults)
-    -p, --parameters    Path to parameters JSON file
-    -h, --help          Show this help message
+    -i, --interactive        Run interactively (prompt for confirmations)
+    -p, --parameters         Path to parameters JSON file
+    -h, --help               Show this help message
 
 EXAMPLES:
-    $0                          # Interactive installation
-    $0 -y                       # Non-interactive installation
-    $0 -p parameters.json       # Use parameters file
-    $0 -y -p parameters.json    # Non-interactive with parameters
+    $0                              # Non-interactive installation (default)
+    $0 --interactive                # Interactive installation with prompts
+    $0 -p parameters.json           # Use parameters file (non-interactive)
+    $0 --interactive -p parameters.json  # Interactive with parameters
 
 EOF
 }
@@ -60,8 +63,8 @@ EOF
 # Parse command line options
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -y|--yes)
-            NON_INTERACTIVE=true
+        -i|--interactive)
+            NON_INTERACTIVE=false
             shift
             ;;
         -p|--parameters)
@@ -94,7 +97,10 @@ source "${DOTFILES_DIR}/scripts/utilities.sh"
 
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then
-    # Override with auto-yes version
+    # Override with auto-accept version for non-interactive mode
+    # Usage: confirm "prompt text" "default_option"
+    # Arguments: prompt - question text, default - Y or N default choice
+    # Returns: 0 if default is Y, 1 if default is N
     confirm() {
         local prompt="$1"
         local default="${2:-Y}"
@@ -148,6 +154,9 @@ trap show_summary EXIT
 # SUMMARY FUNCTIONS
 # =============================================================================
 
+# Display installation summary with backup information and failure details
+# Usage: show_summary
+# Returns: 0 if no failures, 1 if there were failures
 show_summary() {
   section "Dotfiles Installation Complete"
 
@@ -184,6 +193,9 @@ show_summary() {
 # INSTALLATION FUNCTIONS
 # =============================================================================
 
+# Set up symbolic links for dotfiles by calling create_links.sh
+# Usage: setup_symbolic_links
+# Returns: 0 on success, 1 on failure
 setup_symbolic_links() {
   subsection "Setting up symbolic links for dotfiles"
 
@@ -210,6 +222,9 @@ setup_symbolic_links() {
   fi
 }
 
+# Set up macOS development environment by calling cli_initial_setup.sh
+# Usage: setup_macos_environment
+# Returns: 0 on success, 1 on failure
 setup_macos_environment() {
   subsection "Setting up macOS environment"
 
@@ -240,6 +255,9 @@ setup_macos_environment() {
 # MAIN INSTALLATION PROCESS
 # =============================================================================
 
+# Main installation function to orchestrate the complete setup process
+# Usage: main
+# Returns: exits with code based on success/failure of operations
 main() {
   section "Welcome to Dotfiles Setup"
   info "This script will set up your development environment"
@@ -253,11 +271,11 @@ main() {
   fi
   success "System requirements validated"
 
-  # Set up symbolic links
-  setup_symbolic_links
-
-  # macOS-specific setup
+  # macOS-specific setup (installs Homebrew and essential tools including jq)
   setup_macos_environment
+
+  # Set up symbolic links (now that jq is available for template processing)
+  setup_symbolic_links
 }
 
 # =============================================================================

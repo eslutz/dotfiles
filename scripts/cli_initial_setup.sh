@@ -6,9 +6,10 @@
 # Includes Homebrew, CLI tools, Node.js, .NET SDK, and GUI applications
 #
 # Usage:
-#   ./cli_initial_setup.sh                      # Interactive setup with prompts
-#   ./cli_initial_setup.sh --parameters file.json # Use parameters file for additional packages
-#   DEBUG=1 ./cli_initial_setup.sh              # Enable debug output
+#   ./cli_initial_setup.sh                              # Non-interactive setup (default)
+#   ./cli_initial_setup.sh --interactive                # Interactive setup with prompts
+#   ./cli_initial_setup.sh --parameters file.json       # Use parameters file for additional packages
+#   DEBUG=1 ./cli_initial_setup.sh                      # Enable debug output
 #
 # This script will:
 #   1. Install and configure Homebrew package manager
@@ -32,6 +33,10 @@ while [[ $# -gt 0 ]]; do
             PARAMETERS_FILE="$2"
             shift 2
             ;;
+        --interactive)
+            NON_INTERACTIVE=false
+            shift
+            ;;
         *)
             shift
             ;;
@@ -46,6 +51,9 @@ done
 declare -a SETUP_FAILURES
 SETUP_FAILURES=()
 
+# Script options - default to non-interactive mode
+NON_INTERACTIVE="${NON_INTERACTIVE:-true}"
+
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
@@ -53,6 +61,26 @@ SETUP_FAILURES=()
 # Source shared utilities (output formatting and helper functions)
 # shellcheck disable=SC1091
 source "$(dirname "$0")/utilities.sh"
+
+# Override confirm function for non-interactive mode
+if [[ "$NON_INTERACTIVE" == "true" ]]; then
+    # Override with auto-accept version for non-interactive mode
+    # Usage: confirm "prompt text" "default_option"
+    # Arguments: prompt - question text, default - Y or N default choice
+    # Returns: 0 if default is Y, 1 if default is N
+    confirm() {
+        local prompt="$1"
+        local default="${2:-Y}"
+
+        if [[ "$default" =~ ^[Yy]$ ]]; then
+            info "$prompt [Y/n] Y (auto-accepted)"
+            return 0
+        else
+            info "$prompt [y/N] N (auto-declined)"
+            return 1
+        fi
+    }
+fi
 
 # Validate we're not running as root
 validate_not_root || {
@@ -67,6 +95,9 @@ trap show_summary EXIT
 # HOMEBREW INSTALLATION AND SETUP
 # =============================================================================
 
+# Install and configure Homebrew package manager for macOS
+# Usage: setup_homebrew
+# Returns: 0 on success, 1 on failure
 setup_homebrew() {
   subsection "Setting up Homebrew"
 
@@ -162,67 +193,17 @@ setup_rosetta() {
 # PACKAGE INSTALLATION FUNCTIONS
 # =============================================================================
 
-# Function to install Homebrew packages with error handling
-# Handles both regular formulas and casks, with individual failure tracking
-# Arguments: pkg_type ("formula" or "cask"), followed by package names
-brew_install() {
-  local pkg_type="$1"
-  shift
-  local -a packages=("$@")
-  local failed_packages=()
-
-  # Validate input - need at least one package to install
-  if [[ ${#packages[@]} -eq 0 ]]; then
-    warn "No packages provided to install"
-    return 0
-  fi
-
-  # Process each package individually to handle partial failures gracefully
-  for package in "${packages[@]}"; do
-    info "Installing $package ($pkg_type)..."
-
-    # Check if package is already installed to avoid unnecessary work
-    # Different commands needed for casks vs regular formulas
-    if [[ "$pkg_type" == "cask" ]]; then
-      if brew list --cask "$package" &>/dev/null; then
-        info "$package (cask) already installed"
-        continue
-      fi
-      # Install cask with --cask flag
-      if brew install --cask "$package"; then
-        success "$package (cask) installed successfully"
-      else
-        warn "Failed to install $package (cask)"
-        failed_packages+=("$package (cask)")
-      fi
-    else
-      if brew list "$package" &>/dev/null; then
-        info "$package already installed"
-        continue
-      fi
-      # Install regular formula (default behavior)
-      if brew install "$package"; then
-        success "$package installed successfully"
-      else
-        warn "Failed to install $package"
-        failed_packages+=("$package")
-      fi
-    fi
-  done
-
-  # Track all failures in global array for summary reporting
-  # Return 1 if any packages failed, but don't exit - let caller decide
-  if [[ ${#failed_packages[@]} -gt 0 ]]; then
-    for failed in "${failed_packages[@]}"; do
-      SETUP_FAILURES+=("$failed")
-    done
-    return 1
-  fi
-
-  return 0
-}
-
+# Function to install Homebrew packages with provided lists
+# Usage: install_homebrew_packages "formulas_array_name" "casks_array_name"
+# Arguments: formulas_array_name - name of array containing formula packages
+#           casks_array_name - name of array containing cask packages
+# Returns: 0 on success, 1 on failure or if Homebrew is not available
 install_homebrew_packages() {
+  local formulas_ref="$1[@]"
+  local casks_ref="$2[@]"
+  local -a formulas=("${!formulas_ref}")
+  local -a casks=("${!casks_ref}")
+
   subsection "Installing Homebrew packages"
 
   if ! command_exists brew; then
@@ -230,68 +211,56 @@ install_homebrew_packages() {
     return 1
   fi
 
-  # Core Homebrew forumlas
-  local -a formulas=(
-    # Version control and Git tools
-    "bfg"
-    "git"
-    "git-lfs"
-    # Security and GPG tools
-    "pinentry-mac"
-    # System utilities
-    "curl"
-    "htop"
-    "jq"
-    "tree"
-    "wget"
-  )
-
-  # Core Homebrew casks
-  local -a casks=(
-    "powershell"
-  )
-
-  # Add packages from parameters file if provided
-  if [[ -n "$PARAMETERS_FILE" ]] && command_exists jq; then
-    info "Reading additional packages from parameters file..."
-
-    # Add additional formulas
-    local additional_formulas
-    additional_formulas=$(jq -r '.brew.formulas[]? // empty' "$PARAMETERS_FILE" 2>/dev/null || true)
-    if [[ -n "$additional_formulas" ]]; then
-      while IFS= read -r formula; do
-        if [[ -n "$formula" ]] && [[ ! ${formulas[*]} =~ $formula ]]; then
-          info "Adding formula from parameters: $formula"
-          formulas+=("$formula")
-        fi
-      done <<< "$additional_formulas"
-    fi
-
-    # Add additional casks
-    local additional_casks
-    additional_casks=$(jq -r '.brew.casks[]? // empty' "$PARAMETERS_FILE" 2>/dev/null || true)
-    if [[ -n "$additional_casks" ]]; then
-      while IFS= read -r cask; do
-        if [[ -n "$cask" ]] && [[ ! ${casks[*]} =~ $cask ]]; then
-          info "Adding cask from parameters: $cask"
-          casks+=("$cask")
-        fi
-      done <<< "$additional_casks"
-    fi
-  fi
-
   info "Installing ${#formulas[@]} formulas and ${#casks[@]} casks..."
 
   local package_failed=false
+  local failed_packages=()
 
-  if ! brew_install "formula" "${formulas[@]}"; then
-    warn "Some formulas failed to install"
-    package_failed=true
+  # Install formulas
+  if [[ ${#formulas[@]} -gt 0 ]]; then
+    for package in "${formulas[@]}"; do
+      info "Installing $package (formula)..."
+
+      if brew list "$package" &>/dev/null; then
+        info "$package already installed"
+        continue
+      fi
+
+      if brew install "$package"; then
+        success "$package installed successfully"
+      else
+        warn "Failed to install $package"
+        failed_packages+=("$package")
+        package_failed=true
+      fi
+    done
   fi
 
-  if ! brew_install "cask" "${casks[@]}"; then
-    warn "Some casks failed to install"
-    package_failed=true
+  # Install casks
+  if [[ ${#casks[@]} -gt 0 ]]; then
+    for package in "${casks[@]}"; do
+      info "Installing $package (cask)..."
+
+      if brew list --cask "$package" &>/dev/null; then
+        info "$package (cask) already installed"
+        continue
+      fi
+
+      if brew install --cask "$package"; then
+        success "$package (cask) installed successfully"
+      else
+        warn "Failed to install $package (cask)"
+        failed_packages+=("$package (cask)")
+        package_failed=true
+      fi
+    done
+  fi
+
+  # Track all failures in global array for summary reporting
+  if [[ ${#failed_packages[@]} -gt 0 ]]; then
+    for failed in "${failed_packages[@]}"; do
+      SETUP_FAILURES+=("$failed")
+    done
   fi
 
   if [[ "$package_failed" == "true" ]]; then
@@ -782,6 +751,89 @@ install_dotnet() {
 }
 
 # =============================================================================
+# PACKAGE SETUP FUNCTIONS
+# =============================================================================
+
+# Function to setup all Homebrew packages (core and parameter file packages)
+# Handles the complete package installation workflow including parameter file parsing
+# Usage: setup_homebrew_packages
+# Returns: 0 on success, 1 on failure
+setup_homebrew_packages() {
+  subsection "Setting up Homebrew packages"
+
+  # Define core/required Homebrew packages
+  local -a core_formulas=(
+    # Version control and Git tools
+    "bfg"
+    "git"
+    "git-lfs"
+    # Security and GPG tools
+    "pinentry-mac"
+    # System utilities
+    "curl"
+    "htop"
+    "jq"
+    "tree"
+    "wget"
+  )
+
+  local -a core_casks=(
+    "powershell"
+  )
+
+  # Install core packages first (ensures jq is available for parameter file parsing)
+  if [[ ${#core_formulas[@]} -gt 0 ]] || [[ ${#core_casks[@]} -gt 0 ]]; then
+    install_homebrew_packages "core_formulas" "core_casks"
+  else
+    info "No core packages to install"
+  fi
+
+  # Process additional packages from parameters file if provided
+  if [[ -n "$PARAMETERS_FILE" ]] && command_exists jq; then
+    info "Reading additional packages from parameters file..."
+
+    # Initialize arrays for additional packages
+    local -a param_formulas=()
+    local -a param_casks=()
+
+    # Parse additional formulas
+    local additional_formulas
+    additional_formulas=$(jq -r '.brew.formulas[]? // empty' "$PARAMETERS_FILE" 2>/dev/null || true)
+    if [[ -n "$additional_formulas" ]]; then
+      while IFS= read -r formula; do
+        if [[ -n "$formula" ]] && [[ ! ${core_formulas[*]} =~ $formula ]]; then
+          info "Adding formula from parameters: $formula"
+          param_formulas+=("$formula")
+        fi
+      done <<< "$additional_formulas"
+    fi
+
+    # Parse additional casks
+    local additional_casks
+    additional_casks=$(jq -r '.brew.casks[]? // empty' "$PARAMETERS_FILE" 2>/dev/null || true)
+    if [[ -n "$additional_casks" ]]; then
+      while IFS= read -r cask; do
+        if [[ -n "$cask" ]] && [[ ! ${core_casks[*]} =~ $cask ]]; then
+          info "Adding cask from parameters: $cask"
+          param_casks+=("$cask")
+        fi
+      done <<< "$additional_casks"
+    fi
+
+    # Install additional packages from parameters file
+    if [[ ${#param_formulas[@]} -gt 0 ]] || [[ ${#param_casks[@]} -gt 0 ]]; then
+      install_homebrew_packages "param_formulas" "param_casks"
+    else
+      info "No additional packages found in parameters file"
+    fi
+  elif [[ -n "$PARAMETERS_FILE" ]]; then
+    warn "jq not available - cannot parse parameters file for additional packages"
+  fi
+
+  return 0
+}
+
+# =============================================================================
 # SUMMARY FUNCTIONS
 # =============================================================================
 
@@ -818,10 +870,14 @@ main() {
     warn "Homebrew setup failed, but continuing"
     SETUP_FAILURES+=("Homebrew")
   }
-
   setup_homebrew_permissions
   setup_rosetta
-  install_homebrew_packages
+
+  # Install Homebrew packages (core and parameter file packages)
+  setup_homebrew_packages || {
+    warn "Homebrew package setup failed, but continuing"
+    SETUP_FAILURES+=("Homebrew packages")
+  }
 
   # GPG agent configuration
   setup_gpg_agent || {
