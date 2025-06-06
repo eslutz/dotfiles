@@ -11,13 +11,14 @@
 - Follow the style of existing scripts:
   - Use `set -euo pipefail`.
   - Prefer POSIX-compliant shell code unless macOS-specific features are needed.
-  - Use color-coded output functions and timestamped backups.
+  - Use existing color-coded output functions and timestamped backups.
   - Write modular scripts and use functions for repeated logic.
   - Validate user input and check command existence before use.
 
 ### Comment Conventions
 
 - **File headers**: Use a multi-line block with script purpose and usage examples:
+
   ```bash
   # =============================================================================
   # Script Name
@@ -29,6 +30,7 @@
   ```
 
 - **Section headers**: Use consistent section dividers with descriptive names:
+
   ```bash
   # =============================================================================
   # SECTION NAME
@@ -36,12 +38,14 @@
   ```
 
 - **Subsection headers**: Use shorter dividers for subsections:
+
   ```bash
   # Function group description
   # =============================================================================
   ```
 
 - **Function comments**: Document function purpose, parameters, and return values:
+
   ```bash
   # Function description
   # Usage: function_name "param1" "param2"
@@ -50,6 +54,7 @@
   ```
 
 - **Inline comments**: Use sparingly for complex logic or important notes:
+
   ```bash
   command --flag  # Explain why this flag is needed
   ```
@@ -64,5 +69,5 @@
 
 ## Suggestions
 
-- Ensure compatibility with Zsh and macOS.
+- Ensure compatibility with Zsh, the latest macOS, and Apple Silicon.
 - Adhere to the structure, conventions, and best practices already present in this repository.

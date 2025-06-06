@@ -2,17 +2,18 @@
 
 ## Overview
 
-A personal dotfiles repository for quickly setting up a consistent, robust development environment on macOS. This setup is designed for Apple Silicon (ARM64) and targets modern macOS versions (10.15 Catalina and later) with Zsh as the default shell.
+A personal dotfiles repository for quickly setting up a consistent, robust development environment on macOS. This setup is designed for Apple Silicon and supports the latest macOS versions with Zsh as the default shell.
 
 ## Key Features
 
-### Production-Ready Installation Scripts
+### Robust Installation System
 
 - **Comprehensive Error Handling**: Uses `set -euo pipefail` for strict error detection
 - **Automatic Backup System**: Creates timestamped backups of existing configurations before making changes
 - **Smart Symlinks**: Intelligent symbolic link creation with duplicate detection and validation
 - **Graceful Degradation**: Continues installation even if individual components fail, with detailed reporting
 - **Interactive Installation**: User-friendly prompts with sensible defaults
+- **Parameter File Support**: JSON-based configuration for personalizing Git, Vim, and EditorConfig settings, plus installing additional Homebrew packages
 - **Debug Support**: Enable detailed logging with `DEBUG=1` environment variable
 - **Trap-based Cleanup**: Ensures temporary files are cleaned up even if scripts are interrupted
 
@@ -60,12 +61,144 @@ DEBUG=1 ./install.sh
 # Interactive installation with prompts
 ./install.sh --interactive
 
+# Use custom parameters file for personalization
+./install.sh --parameters ./parameters.json
+
+# Combine options (interactive mode with parameters)
+./install.sh --interactive --parameters ./parameters.json
+
 # Just create symbolic links (skip development tools)
 ./scripts/create_links.sh
 
 # Just install development tools (skip dotfiles)
 ./scripts/cli_initial_setup.sh
 ```
+
+## Parameter File Configuration
+
+The installation script supports a parameter file (`parameters.json`) for customizing dotfile configurations and installing additional Homebrew packages beyond the core set. The parameter file enables personalization of multiple dotfiles through template processing.
+
+### Parameter File Structure
+
+The parameter file uses JSON format and supports the following configuration sections:
+
+```json
+{
+  "gitconfig": {
+    "GIT_USER_NAME": "Your Name",
+    "GIT_USER_EMAIL": "your.email@example.com",
+    "GIT_USER_SIGNING_KEY": "your-gpg-key-id"
+  },
+  "vimrc": {
+    "VIM_TAB_WIDTH": "4",
+    "VIM_INDENT_WIDTH": "4",
+    "VIM_LINE_LENGTH": "80",
+    "VIM_MOUSE_MODE": "a",
+    "VIM_CLIPBOARD": "unnamed",
+    "VIM_SCROLL_OFFSET": "3"
+  },
+  "editorconfig": {
+    "EDITOR_CHARSET": "utf-8",
+    "EDITOR_END_OF_LINE": "lf",
+    "EDITOR_INSERT_FINAL_NEWLINE": "true",
+    "EDITOR_TRIM_TRAILING_WHITESPACE": "true",
+    "EDITOR_INDENT_STYLE": "space",
+    "EDITOR_DEFAULT_INDENT_SIZE": "2",
+    "EDITOR_DEFAULT_MAX_LINE_LENGTH": "120",
+    "EDITOR_DOTNET_INDENT_SIZE": "4",
+    "EDITOR_PYTHON_INDENT_SIZE": "4",
+    "EDITOR_PYTHON_MAX_LINE_LENGTH": "80"
+  },
+  "brew": {
+    "formulas": ["additional-formula1", "additional-formula2"],
+    "casks": ["additional-cask1", "additional-cask2"]
+  }
+}
+```
+
+### Configuration Sections
+
+| Section        | Purpose                                                               | Required |
+| -------------- | --------------------------------------------------------------------- | -------- |
+| `gitconfig`    | Personalizes Git configuration template (generates `.gitconfig` file) | No       |
+| `vimrc`        | Customizes Vim editor settings (generates `.vimrc` file)              | No       |
+| `editorconfig` | Configures EditorConfig settings (generates `.editorconfig` file)     | No       |
+| `brew`         | Specifies additional Homebrew formulas and casks to install           | No       |
+
+#### Git Configuration (`gitconfig`)
+
+Configures Git user identity and GPG signing:
+
+- **GIT_USER_NAME**: Your full name for Git commits
+- **GIT_USER_EMAIL**: Your email address for Git commits
+- **GIT_USER_SIGNING_KEY**: Your GPG key ID for commit signing (optional)
+
+#### Vim Configuration (`vimrc`)
+
+Customizes Vim editor behavior and appearance:
+
+- **VIM_TAB_WIDTH**: Width of tab characters (default: 4)
+- **VIM_INDENT_WIDTH**: Width for auto-indentation (default: 4)
+- **VIM_LINE_LENGTH**: Column indicator for line length (default: 80)
+- **VIM_MOUSE_MODE**: Mouse support mode - 'a' for all modes, 'n' for normal only (default: a)
+- **VIM_CLIPBOARD**: Clipboard integration - 'unnamed' for system clipboard (default: unnamed)
+- **VIM_SCROLL_OFFSET**: Lines to keep visible above/below cursor (default: 3)
+
+#### EditorConfig Configuration (`editorconfig`)
+
+Sets universal formatting rules for code editors:
+
+- **EDITOR_CHARSET**: Character encoding (default: utf-8)
+- **EDITOR_END_OF_LINE**: Line ending style - 'lf', 'crlf', or 'cr' (default: lf)
+- **EDITOR_INSERT_FINAL_NEWLINE**: Add newline at end of file (default: true)
+- **EDITOR_TRIM_TRAILING_WHITESPACE**: Remove trailing spaces (default: true)
+- **EDITOR_INDENT_STYLE**: Indentation style - 'space' or 'tab' (default: space)
+- **EDITOR_DEFAULT_INDENT_SIZE**: Default indentation size (default: 2)
+- **EDITOR_DEFAULT_MAX_LINE_LENGTH**: Default line length limit (default: 120)
+- **EDITOR_DOTNET_INDENT_SIZE**: Indentation for .NET files (default: 4)
+- **EDITOR_PYTHON_INDENT_SIZE**: Indentation for Python files (default: 4)
+- **EDITOR_PYTHON_MAX_LINE_LENGTH**: Line length for Python files (default: 80)
+
+#### Homebrew Configuration (`brew`)
+
+- **formulas**: Array of additional command-line tools to install beyond the default set
+- **casks**: Array of additional GUI applications to install beyond the default set
+
+### Template Processing
+
+When a parameter file is provided, the installation process:
+
+1. **Validates** the JSON syntax before processing
+2. **Processes templates** for Git, Vim, and EditorConfig using parameter values to generate personalized dotfiles
+3. **Installs additional Homebrew packages** specified in the `brew` section
+
+### Template System
+
+The dotfiles repository includes a comprehensive template system that processes placeholders in multiple configuration templates:
+
+- **Template files**: `templates/template.gitconfig`, `templates/template.vimrc`, `templates/template.editorconfig`
+- **Placeholder format**: `{{VARIABLE_NAME}}` (e.g., `{{GIT_USER_NAME}}`, `{{VIM_TAB_WIDTH}}`)
+- **Generated output**: Corresponding dotfiles in `dotfiles/` directory (only when parameter file is used)
+
+#### Template System Behavior
+
+The dotfiles repository uses a two-stage approach for configuration management:
+
+#### Without Parameter File (Default)
+
+- Existing dotfiles in the `dotfiles/` directory are used directly
+- No template processing occurs
+- Files like `.gitconfig`, `.vimrc`, and `.editorconfig` are linked as-is from the `dotfiles/` directory to your home directory
+- This provides sensible defaults that work out-of-the-box
+
+#### With Parameter File
+
+- Templates from the `templates/` directory are processed with your custom values
+- Generated files **replace** the corresponding files in the `dotfiles/` directory
+- The processed files are then linked to your home directory
+- Original template files in `templates/` remain unchanged
+
+This design allows the repository to work immediately with sensible defaults while supporting full customization when needed. The existing dotfiles serve dual purposes: default configurations when no parameters are provided, and target locations for processed templates when parameters are provided.
 
 ## Scripts
 
@@ -76,6 +209,7 @@ The repository is organized with modular, reusable scripts:
 | `install.sh`                   | Main installation script that orchestrates the entire setup process             |
 | `scripts/create_links.sh`      | Creates symbolic links for dotfiles with automatic backup                       |
 | `scripts/cli_initial_setup.sh` | Installs and configures development tools for macOS                             |
+| `scripts/process_templates.sh` | Processes dotfile templates with values from parameters JSON file               |
 | `scripts/utilities.sh`         | Shared utility functions consisting of output, helper, and validation functions |
 
 ### Utility Functions
@@ -245,8 +379,8 @@ dotnet --version
 # Check current PATH
 echo $PATH
 
-# Manually clean PATH duplicates
-export PATH=$(echo $PATH | tr ':' '\n' | awk '!seen[$0]++' | tr '\n' ':' | sed 's/:$//')
+# Reload shell configuration to fix PATH issues
+source ~/.zprofile && source ~/.zshrc
 ```
 
 #### Homebrew Permission Issues
@@ -280,9 +414,9 @@ Debug mode provides:
 
 ### System Requirements
 
-- **Operating System**: macOS 10.15 (Catalina) or later
+- **Operating System**: Latest macOS versions
 - **Architecture**: Apple Silicon (ARM64)
-- **Shell**: Zsh (default on macOS 10.15+)
+- **Shell**: Zsh (default on modern macOS)
 - **Network**: Internet connection for downloading tools and packages
 
 ### Security Features

@@ -1,10 +1,28 @@
 {
   "gitconfig": {
-    "user": {
-      "name": "Eric Slutz",
-      "email": "eric.slutz@icloud.com",
-      "signingkey": "73972EAEA22EB186"
-    }
+    "GIT_USER_NAME": "Eric Slutz",
+    "GIT_USER_EMAIL": "eric.slutz@icloud.com",
+    "GIT_USER_SIGNING_KEY": "73972EAEA22EB186"
+  },
+  "vimrc": {
+    "VIM_TAB_WIDTH": "4",
+    "VIM_INDENT_WIDTH": "4",
+    "VIM_LINE_LENGTH": "80",
+    "VIM_MOUSE_MODE": "a",
+    "VIM_CLIPBOARD": "unnamed",
+    "VIM_SCROLL_OFFSET": "3"
+  },
+  "editorconfig": {
+    "EDITOR_CHARSET": "utf-8",
+    "EDITOR_END_OF_LINE": "lf",
+    "EDITOR_INSERT_FINAL_NEWLINE": "true",
+    "EDITOR_TRIM_TRAILING_WHITESPACE": "true",
+    "EDITOR_INDENT_STYLE": "space",
+    "EDITOR_DEFAULT_INDENT_SIZE": "2",
+    "EDITOR_DEFAULT_MAX_LINE_LENGTH": "120",
+    "EDITOR_DOTNET_INDENT_SIZE": "4",
+    "EDITOR_PYTHON_INDENT_SIZE": "4",
+    "EDITOR_PYTHON_MAX_LINE_LENGTH": "80"
   },
   "brew": {
     "formulas": ["azure-cli", "qemu"],

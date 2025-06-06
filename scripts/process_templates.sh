@@ -42,26 +42,47 @@ process_template() {
     local template_content
     template_content=$(<"$template_file")
 
-    # Process gitconfig values
-    if [[ "$output_file" == *".gitconfig" ]]; then
-        local git_name git_email git_signingkey
-        git_name=$(jq -r '.gitconfig.user.name // empty' "$params_json")
-        git_email=$(jq -r '.gitconfig.user.email // empty' "$params_json")
-        git_signingkey=$(jq -r '.gitconfig.user.signingkey // empty' "$params_json")
+    # Extract dotfile name from template filename (template.gitconfig -> gitconfig)
+    local template_basename
+    template_basename=$(basename "$template_file")
+    local dotfile_key="${template_basename#template.}"
 
-        # Replace placeholders if values exist
-        if [[ -n "$git_name" ]]; then
-            template_content="${template_content//\{\{GIT_USER_NAME\}\}/$git_name}"
-            debug "Replaced GIT_USER_NAME with: $git_name"
+    debug "Extracted dotfile key: $dotfile_key"
+
+    # Check if this dotfile section exists in parameters
+    if jq -e ".$dotfile_key" "$params_json" >/dev/null 2>&1; then
+        info "Found parameters section for: $dotfile_key"
+
+        # Find all placeholders in the template ({{PLACEHOLDER_NAME}})
+        local placeholders
+        placeholders=$(grep -o '{{[^}]*}}' "$template_file" | sort -u || true)
+
+        if [[ -n "$placeholders" ]]; then
+            # Process each placeholder
+            while IFS= read -r placeholder; do
+                if [[ -n "$placeholder" ]]; then
+                    # Extract placeholder name (remove {{ and }})
+                    local placeholder_name="${placeholder#\{\{}"
+                    placeholder_name="${placeholder_name%\}\}}"
+
+                    # Get value from JSON using the dotfile key and placeholder name
+                    local value
+                    value=$(jq -r ".$dotfile_key.$placeholder_name // empty" "$params_json")
+
+                    if [[ -n "$value" ]]; then
+                        # Replace placeholder in template content
+                        template_content="${template_content//$placeholder/$value}"
+                        debug "Replaced $placeholder with: $value"
+                    else
+                        warn "No value found for placeholder: $placeholder"
+                    fi
+                fi
+            done <<< "$placeholders"
+        else
+            debug "No placeholders found in template"
         fi
-        if [[ -n "$git_email" ]]; then
-            template_content="${template_content//\{\{GIT_USER_EMAIL\}\}/$git_email}"
-            debug "Replaced GIT_USER_EMAIL with: $git_email"
-        fi
-        if [[ -n "$git_signingkey" ]]; then
-            template_content="${template_content//\{\{GIT_SIGNING_KEY\}\}/$git_signingkey}"
-            debug "Replaced GIT_SIGNING_KEY with: $git_signingkey"
-        fi
+    else
+        warn "No parameters section found for: $dotfile_key"
     fi
 
     # Write the processed content
