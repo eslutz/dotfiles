@@ -60,16 +60,6 @@ while [[ $# -gt 0 ]]; do
       exit 1
     fi
     ;;
-  *)
-    # Support legacy positional argument for backwards compatibility
-    if [[ -z "$PARAMETERS_FILE" ]]; then
-      PARAMETERS_FILE="$1"
-      shift
-    else
-      error "Unexpected argument: $1"
-      exit 1
-    fi
-    ;;
   esac
 done
 
@@ -92,7 +82,6 @@ OPTIONS:
 
 EXAMPLES:
     $0 -p parameters.json    # Process templates with parameters file
-    $0 parameters.json       # Legacy: positional argument (still supported)
 
 EOF
       exit 0
