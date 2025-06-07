@@ -26,16 +26,16 @@ set -euo pipefail
 PARAMETERS_FILE=""
 
 while [[ $# -gt 0 ]]; do
-    case $1 in
-        --parameters)
-            PARAMETERS_FILE="$2"
-            shift 2
-            ;;
-        *)
-            echo "Unknown option: $1"
-            exit 1
-            ;;
-    esac
+  case $1 in
+  --parameters)
+    PARAMETERS_FILE="$2"
+    shift 2
+    ;;
+  *)
+    echo "Unknown option: $1"
+    exit 1
+    ;;
+  esac
 done
 
 # =============================================================================
@@ -44,10 +44,10 @@ done
 
 # Get the directory where this script is located (scripts/)
 # shellcheck disable=SC2155
-readonly SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Get the dotfiles directory (dotfiles/ subdirectory) - built the same way as SCRIPT_DIR
 # shellcheck disable=SC2155
-readonly DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../dotfiles" && pwd )"
+readonly DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../dotfiles" && pwd)"
 
 # Create backup directory path (but do not create it yet)
 # shellcheck disable=SC2155
@@ -314,7 +314,7 @@ find_additional_dotfiles() {
   local -a additional_dotfiles=()
 
   # Search for all hidden files (starting with .) in the dotfiles directory
-  for file in "$DOTFILES_DIR"/.[^.]* ; do
+  for file in "$DOTFILES_DIR"/.[^.]*; do
     # Skip if not a regular file (could be directory, symlink, etc.)
     [[ ! -f "$file" ]] && continue
 
@@ -358,24 +358,24 @@ find_additional_dotfiles() {
 # Usage: process_templates_if_needed
 # Returns: 0 on success or if no processing needed, 1 on failure
 process_templates_if_needed() {
-    if [[ -n "$PARAMETERS_FILE" ]]; then
-        subsection "Processing templates with parameters"
+  if [[ -n "$PARAMETERS_FILE" ]]; then
+    subsection "Processing templates with parameters"
 
-        local template_processor="$SCRIPT_DIR/process_templates.sh"
-        if [[ -x "$template_processor" ]]; then
-            if "$template_processor" "$PARAMETERS_FILE"; then
-                success "Templates processed successfully"
-                return 0
-            else
-                error "Failed to process templates"
-                return 1
-            fi
-        else
-            warn "Template processor not found or not executable: $template_processor"
-            return 1
-        fi
+    local template_processor="$SCRIPT_DIR/process_templates.sh"
+    if [[ -x "$template_processor" ]]; then
+      if "$template_processor" "$PARAMETERS_FILE"; then
+        success "Templates processed successfully"
+        return 0
+      else
+        error "Failed to process templates"
+        return 1
+      fi
+    else
+      warn "Template processor not found or not executable: $template_processor"
+      return 1
     fi
-    return 0
+  fi
+  return 0
 }
 
 # =============================================================================

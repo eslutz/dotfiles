@@ -84,34 +84,37 @@ The parameter file uses JSON format and supports the following configuration sec
 
 ```json
 {
-  "gitconfig": {
-    "GIT_USER_NAME": "Your Name",
-    "GIT_USER_EMAIL": "your.email@example.com",
-    "GIT_USER_SIGNING_KEY": "your-gpg-key-id"
-  },
-  "vimrc": {
-    "VIM_TAB_WIDTH": "4",
-    "VIM_INDENT_WIDTH": "4",
-    "VIM_LINE_LENGTH": "80",
-    "VIM_MOUSE_MODE": "a",
-    "VIM_CLIPBOARD": "unnamed",
-    "VIM_SCROLL_OFFSET": "3"
-  },
-  "editorconfig": {
-    "EDITOR_CHARSET": "utf-8",
-    "EDITOR_END_OF_LINE": "lf",
-    "EDITOR_INSERT_FINAL_NEWLINE": "true",
-    "EDITOR_TRIM_TRAILING_WHITESPACE": "true",
-    "EDITOR_INDENT_STYLE": "space",
-    "EDITOR_DEFAULT_INDENT_SIZE": "2",
-    "EDITOR_DEFAULT_MAX_LINE_LENGTH": "120",
-    "EDITOR_DOTNET_INDENT_SIZE": "4",
-    "EDITOR_PYTHON_INDENT_SIZE": "4",
-    "EDITOR_PYTHON_MAX_LINE_LENGTH": "80"
-  },
   "brew": {
     "formulas": ["additional-formula1", "additional-formula2"],
     "casks": ["additional-cask1", "additional-cask2"]
+  },
+  "editorconfig": {
+    "charset": "utf-8",
+    "endOfLine": "lf",
+    "insertFinalNewline": "true",
+    "trimTrailingWhitespace": "true",
+    "indentStyle": "space",
+    "defaultIndentSize": "2",
+    "defaultMaxLineLength": "120",
+    "dotnetIndentSize": "4",
+    "pythonIndentSize": "4",
+    "pythonMaxLineLength": "80"
+  },
+  "gitconfig": {
+    "userName": "Your Name",
+    "userEmail": "your.email@example.com",
+    "userSigningKey": "your-gpg-key-id"
+  },
+  "vimrc": {
+    "tabWidth": "4",
+    "indentWidth": "4",
+    "lineLength": "80",
+    "mouseMode": "a",
+    "clipboard": "unnamed",
+    "scrollOffset": "3"
+  },
+  "vscode": {
+    "installPath": "/Applications/Development"
   }
 }
 ```
@@ -120,49 +123,59 @@ The parameter file uses JSON format and supports the following configuration sec
 
 | Section        | Purpose                                                               | Required |
 | -------------- | --------------------------------------------------------------------- | -------- |
+| `brew`         | Specifies additional Homebrew formulas and casks to install           | No       |
+| `editorconfig` | Configures EditorConfig settings (generates `.editorconfig` file)     | No       |
 | `gitconfig`    | Personalizes Git configuration template (generates `.gitconfig` file) | No       |
 | `vimrc`        | Customizes Vim editor settings (generates `.vimrc` file)              | No       |
-| `editorconfig` | Configures EditorConfig settings (generates `.editorconfig` file)     | No       |
-| `brew`         | Specifies additional Homebrew formulas and casks to install           | No       |
-
-#### Git Configuration (`gitconfig`)
-
-Configures Git user identity and GPG signing:
-
-- **GIT_USER_NAME**: Your full name for Git commits
-- **GIT_USER_EMAIL**: Your email address for Git commits
-- **GIT_USER_SIGNING_KEY**: Your GPG key ID for commit signing (optional)
-
-#### Vim Configuration (`vimrc`)
-
-Customizes Vim editor behavior and appearance:
-
-- **VIM_TAB_WIDTH**: Width of tab characters (default: 4)
-- **VIM_INDENT_WIDTH**: Width for auto-indentation (default: 4)
-- **VIM_LINE_LENGTH**: Column indicator for line length (default: 80)
-- **VIM_MOUSE_MODE**: Mouse support mode - 'a' for all modes, 'n' for normal only (default: a)
-- **VIM_CLIPBOARD**: Clipboard integration - 'unnamed' for system clipboard (default: unnamed)
-- **VIM_SCROLL_OFFSET**: Lines to keep visible above/below cursor (default: 3)
-
-#### EditorConfig Configuration (`editorconfig`)
-
-Sets universal formatting rules for code editors:
-
-- **EDITOR_CHARSET**: Character encoding (default: utf-8)
-- **EDITOR_END_OF_LINE**: Line ending style - 'lf', 'crlf', or 'cr' (default: lf)
-- **EDITOR_INSERT_FINAL_NEWLINE**: Add newline at end of file (default: true)
-- **EDITOR_TRIM_TRAILING_WHITESPACE**: Remove trailing spaces (default: true)
-- **EDITOR_INDENT_STYLE**: Indentation style - 'space' or 'tab' (default: space)
-- **EDITOR_DEFAULT_INDENT_SIZE**: Default indentation size (default: 2)
-- **EDITOR_DEFAULT_MAX_LINE_LENGTH**: Default line length limit (default: 120)
-- **EDITOR_DOTNET_INDENT_SIZE**: Indentation for .NET files (default: 4)
-- **EDITOR_PYTHON_INDENT_SIZE**: Indentation for Python files (default: 4)
-- **EDITOR_PYTHON_MAX_LINE_LENGTH**: Line length for Python files (default: 80)
+| `vscode`       | Configures Visual Studio Code installation settings                   | No       |
 
 #### Homebrew Configuration (`brew`)
 
 - **formulas**: Array of additional command-line tools to install beyond the default set
 - **casks**: Array of additional GUI applications to install beyond the default set
+
+#### EditorConfig Configuration (`editorconfig`)
+
+Sets universal formatting rules for code editors:
+
+- **charset**: Character encoding (default: utf-8)
+- **endOfLine**: Line ending style - 'lf', 'crlf', or 'cr' (default: lf)
+- **insertFinalNewline**: Add newline at end of file (default: true)
+- **trimTrailingWhitespace**: Remove trailing spaces (default: true)
+- **indentStyle**: Indentation style - 'space' or 'tab' (default: space)
+- **defaultIndentSize**: Default indentation size (default: 2)
+- **defaultMaxLineLength**: Default line length limit (default: 120)
+- **dotnetIndentSize**: Indentation for .NET files (default: 4)
+- **pythonIndentSize**: Indentation for Python files (default: 4)
+- **pythonMaxLineLength**: Line length for Python files (default: 80)
+
+#### Git Configuration (`gitconfig`)
+
+Configures Git user identity and GPG signing:
+
+- **userName**: Your full name for Git commits
+- **userEmail**: Your email address for Git commits
+- **userSigningKey**: Your GPG key ID for commit signing (optional)
+
+#### Vim Configuration (`vimrc`)
+
+Customizes Vim editor behavior and appearance:
+
+- **tabWidth**: Width of tab characters (default: 4)
+- **indentWidth**: Width for auto-indentation (default: 4)
+- **lineLength**: Column indicator for line length (default: 80)
+- **mouseMode**: Mouse support mode - 'a' for all modes, 'n' for normal only (default: a)
+- **clipboard**: Clipboard integration - 'unnamed' for system clipboard (default: unnamed)
+- **scrollOffset**: Lines to keep visible above/below cursor (default: 3)
+
+#### Visual Studio Code Configuration (`vscode`)
+
+Configures Visual Studio Code installation behavior:
+
+- **installPath**: Custom installation directory path (default: /Applications)
+  - If specified, VS Code will be installed to this directory instead of prompting
+  - Useful for organizing applications in custom folders like `/Applications/Development`
+  - Leave empty or omit to use default interactive installation behavior
 
 ### Template Processing
 
@@ -177,8 +190,11 @@ When a parameter file is provided, the installation process:
 The dotfiles repository includes a comprehensive template system that processes placeholders in multiple configuration templates:
 
 - **Template files**: `templates/template.gitconfig`, `templates/template.vimrc`, `templates/template.editorconfig`
-- **Placeholder format**: `{{VARIABLE_NAME}}` (e.g., `{{GIT_USER_NAME}}`, `{{VIM_TAB_WIDTH}}`)
+- **Placeholder format**: `{{PREFIX_PROPERTY_NAME}}` (e.g., `{{GIT_USER_NAME}}`, `{{VIM_TAB_WIDTH}}`, `{{EDITOR_CHARSET}}`)
+- **Parameter format**: camelCase JSON properties (e.g., `userName`, `tabWidth`, `charset`)
 - **Generated output**: Corresponding dotfiles in `dotfiles/` directory (only when parameter file is used)
+
+The template system automatically converts placeholder names by removing the first prefix and converting to camelCase for JSON lookup. For example: `{{GIT_USER_NAME}}` becomes `userName` in the `gitconfig` section.
 
 #### Template System Behavior
 
@@ -401,6 +417,7 @@ Enable detailed logging for troubleshooting:
 DEBUG=1 ./install.sh
 DEBUG=1 ./scripts/create_links.sh
 DEBUG=1 ./scripts/cli_initial_setup.sh
+DEBUG=1 ./scripts/process_templates.sh ./parameters.json
 ```
 
 Debug mode provides:

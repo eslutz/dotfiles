@@ -28,19 +28,19 @@ set -euo pipefail
 PARAMETERS_FILE=""
 
 while [[ $# -gt 0 ]]; do
-    case $1 in
-        --parameters)
-            PARAMETERS_FILE="$2"
-            shift 2
-            ;;
-        --interactive)
-            NON_INTERACTIVE=false
-            shift
-            ;;
-        *)
-            shift
-            ;;
-    esac
+  case $1 in
+  --parameters)
+    PARAMETERS_FILE="$2"
+    shift 2
+    ;;
+  --interactive)
+    NON_INTERACTIVE=false
+    shift
+    ;;
+  *)
+    shift
+    ;;
+  esac
 done
 
 # =============================================================================
@@ -64,22 +64,22 @@ source "$(dirname "$0")/utilities.sh"
 
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then
-    # Override with auto-accept version for non-interactive mode
-    # Usage: confirm "prompt text" "default_option"
-    # Arguments: prompt - question text, default - Y or N default choice
-    # Returns: 0 if default is Y, 1 if default is N
-    confirm() {
-        local prompt="$1"
-        local default="${2:-Y}"
+  # Override with auto-accept version for non-interactive mode
+  # Usage: confirm "prompt text" "default_option"
+  # Arguments: prompt - question text, default - Y or N default choice
+  # Returns: 0 if default is Y, 1 if default is N
+  confirm() {
+    local prompt="$1"
+    local default="${2:-Y}"
 
-        if [[ "$default" =~ ^[Yy]$ ]]; then
-            info "$prompt [Y/n] Y (auto-accepted)"
-            return 0
-        else
-            info "$prompt [y/N] N (auto-declined)"
-            return 1
-        fi
-    }
+    if [[ "$default" =~ ^[Yy]$ ]]; then
+      info "$prompt [Y/n] Y (auto-accepted)"
+      return 0
+    else
+      info "$prompt [y/N] N (auto-declined)"
+      return 1
+    fi
+  }
 fi
 
 # Validate we're not running as root
@@ -380,7 +380,7 @@ setup_node() {
   # Add NVM sourcing to shell profile if not already present
   # Check if NVM sourcing is already configured in the shell profile
   if ! grep -q 'nvm.sh' "$shell_profile" 2>/dev/null; then
-    echo "[ -s \"$(brew --prefix)/opt/nvm/nvm.sh\" ] && . \"$(brew --prefix)/opt/nvm/nvm.sh\"" >> "$shell_profile"
+    echo "[ -s \"$(brew --prefix)/opt/nvm/nvm.sh\" ] && . \"$(brew --prefix)/opt/nvm/nvm.sh\"" >>"$shell_profile"
     info "Added NVM sourcing to $shell_profile"
   fi
 
@@ -464,19 +464,34 @@ install_vscode() {
   # Handle installation destination with user interaction
   local dest_dir default_dest="/Applications"
 
-  # Interactive destination selection with default
-  echo
-  read -r -p "Where do you want to install Visual Studio Code? [${default_dest}] " dest_dir
-  echo
+  # Check for custom install path in parameters file
+  local param_install_path
+  param_install_path=$(jq -r '.vscode.installPath // empty' "$PARAMETERS_FILE" 2>/dev/null || true)
 
-  # Sanitize and validate user input
-  dest_dir=$(sanitize_input "$dest_dir")
-
-  # Use default if user just pressed Enter
-  if [[ -z "$dest_dir" ]]; then
+  # Use parameter file path if provided and non-empty
+  if [[ -n "$param_install_path" ]]; then
+    dest_dir="$param_install_path"
+    info "Using installation path from parameters file: $dest_dir"
+  # Interactive destination selection with default (respects NON_INTERACTIVE mode)
+  elif [[ "$NON_INTERACTIVE" == "true" ]]; then
     dest_dir="$default_dest"
+    info "Using default installation path: $default_dest (non-interactive mode)"
+  else
+    echo
+    read -r -p "Where do you want to install Visual Studio Code? [${default_dest}] " dest_dir
+    echo
+
+    # Sanitize and validate user input
+    dest_dir=$(sanitize_input "$dest_dir")
+
+    # Use default if user just pressed Enter
+    if [[ -z "$dest_dir" ]]; then
+      dest_dir="$default_dest"
+    fi
+  fi
+
   # Convert relative paths to absolute paths under /Applications
-  elif [[ "$dest_dir" != /* ]]; then
+  if [[ "$dest_dir" != /* ]]; then
     dest_dir="$default_dest/$dest_dir"
   fi
 
@@ -497,11 +512,9 @@ install_vscode() {
   # Try without sudo first (works for user directories like ~/Applications)
   if ! mv "Visual Studio Code.app" "$dest_dir/" 2>/dev/null; then
     warn "Failed to move Visual Studio Code to $dest_dir without sudo"
-    echo
+
     # Interactive sudo prompt for system directories like /Applications
-    read -p "Try with sudo? [Y/n] " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+    if confirm "Try with sudo?" "Y"; then
       if ! sudo mv "Visual Studio Code.app" "$dest_dir/"; then
         error "Failed to move Visual Studio Code to $dest_dir even with sudo"
         trap - EXIT INT TERM
@@ -622,7 +635,7 @@ setup_gpg_agent() {
   # Check if pinentry-mac configuration already exists in GPG agent config
   if ! grep -q "pinentry-program.*pinentry-mac" "$gpg_agent_conf" 2>/dev/null; then
     info "Configuring GPG agent to use pinentry-mac"
-    echo "pinentry-program $(brew --prefix)/bin/pinentry-mac" >> "$gpg_agent_conf"
+    echo "pinentry-program $(brew --prefix)/bin/pinentry-mac" >>"$gpg_agent_conf"
     success "GPG agent configured"
   else
     info "GPG agent already configured with pinentry-mac"
@@ -805,7 +818,7 @@ setup_homebrew_packages() {
           info "Adding formula from parameters: $formula"
           param_formulas+=("$formula")
         fi
-      done <<< "$additional_formulas"
+      done <<<"$additional_formulas"
     fi
 
     # Parse additional casks
@@ -817,7 +830,7 @@ setup_homebrew_packages() {
           info "Adding cask from parameters: $cask"
           param_casks+=("$cask")
         fi
-      done <<< "$additional_casks"
+      done <<<"$additional_casks"
     fi
 
     # Install additional packages from parameters file
@@ -910,7 +923,7 @@ main() {
       while IFS= read -r -d '' found; do
         if [ -d "$found" ]; then
           vscode_app_path="$found"
-          break 2  # Exit both loops as soon as we find the first match
+          break 2 # Exit both loops as soon as we find the first match
         fi
       done < <(find "$base" -maxdepth 2 -type d \( -name "Visual Studio Code.app" -o -name "Visual Studio Code - Insiders.app" \) -print0)
     fi

@@ -26,13 +26,13 @@ set -euo pipefail
 
 # Get the directory where this script is located
 # shellcheck disable=SC2155
-readonly DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+readonly DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Initialize failures array to track setup issues
 declare -a FAILURES=()
 
 # Script options
-NON_INTERACTIVE=true  # Non-interactive is the default
+NON_INTERACTIVE=true # Non-interactive is the default
 PARAMETERS_FILE=""
 
 # =============================================================================
@@ -43,7 +43,7 @@ PARAMETERS_FILE=""
 # Usage: usage
 # Returns: always 0
 usage() {
-    cat << EOF
+  cat <<EOF
 Usage: $0 [OPTIONS]
 
 OPTIONS:
@@ -62,25 +62,25 @@ EOF
 
 # Parse command line options
 while [[ $# -gt 0 ]]; do
-    case $1 in
-        -i|--interactive)
-            NON_INTERACTIVE=false
-            shift
-            ;;
-        -p|--parameters)
-            PARAMETERS_FILE="$2"
-            shift 2
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1"
-            usage
-            exit 1
-            ;;
-    esac
+  case $1 in
+  -i | --interactive)
+    NON_INTERACTIVE=false
+    shift
+    ;;
+  -p | --parameters)
+    PARAMETERS_FILE="$2"
+    shift 2
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1"
+    usage
+    exit 1
+    ;;
+  esac
 done
 
 # Export these for child scripts
@@ -97,42 +97,42 @@ source "${DOTFILES_DIR}/scripts/utilities.sh"
 
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then
-    # Override with auto-accept version for non-interactive mode
-    # Usage: confirm "prompt text" "default_option"
-    # Arguments: prompt - question text, default - Y or N default choice
-    # Returns: 0 if default is Y, 1 if default is N
-    confirm() {
-        local prompt="$1"
-        local default="${2:-Y}"
+  # Override with auto-accept version for non-interactive mode
+  # Usage: confirm "prompt text" "default_option"
+  # Arguments: prompt - question text, default - Y or N default choice
+  # Returns: 0 if default is Y, 1 if default is N
+  confirm() {
+    local prompt="$1"
+    local default="${2:-Y}"
 
-        if [[ "$default" =~ ^[Yy]$ ]]; then
-            info "$prompt [Y/n] Y (auto-accepted)"
-            return 0
-        else
-            info "$prompt [y/N] N (auto-declined)"
-            return 1
-        fi
-    }
+    if [[ "$default" =~ ^[Yy]$ ]]; then
+      info "$prompt [Y/n] Y (auto-accepted)"
+      return 0
+    else
+      info "$prompt [y/N] N (auto-declined)"
+      return 1
+    fi
+  }
 fi
 
 # Validate parameters file if provided
 if [[ -n "$PARAMETERS_FILE" ]]; then
-    if [[ ! -f "$PARAMETERS_FILE" ]]; then
-        error "Parameters file not found: $PARAMETERS_FILE"
-        exit 1
-    fi
+  if [[ ! -f "$PARAMETERS_FILE" ]]; then
+    error "Parameters file not found: $PARAMETERS_FILE"
+    exit 1
+  fi
 
-    # Validate JSON syntax
-    if ! command_exists jq; then
-        warn "jq not installed. Cannot validate parameters file syntax."
-        warn "Parameters file will be passed to child scripts for processing."
-    else
-        if ! jq empty "$PARAMETERS_FILE" 2>/dev/null; then
-            error "Invalid JSON in parameters file: $PARAMETERS_FILE"
-            exit 1
-        fi
-        info "Parameters file validated: $PARAMETERS_FILE"
+  # Validate JSON syntax
+  if ! command_exists jq; then
+    warn "jq not installed. Cannot validate parameters file syntax."
+    warn "Parameters file will be passed to child scripts for processing."
+  else
+    if ! jq empty "$PARAMETERS_FILE" 2>/dev/null; then
+      error "Invalid JSON in parameters file: $PARAMETERS_FILE"
+      exit 1
     fi
+    info "Parameters file validated: $PARAMETERS_FILE"
+  fi
 fi
 
 # Validate we're not running as root

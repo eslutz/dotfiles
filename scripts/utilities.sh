@@ -287,11 +287,11 @@ confirm() {
 
   # Ensure default is Y or N
   case "$default" in
-    [Yy]|[Nn]) ;;
-    *)
-      error "Default option must be Y or N, got: $default"
-      return 1
-      ;;
+  [Yy] | [Nn]) ;;
+  *)
+    error "Default option must be Y or N, got: $default"
+    return 1
+    ;;
   esac
 
   read -p "$prompt [$default] " -n 1 -r response

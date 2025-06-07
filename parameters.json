@@ -1,31 +1,34 @@
 {
-  "gitconfig": {
-    "GIT_USER_NAME": "Eric Slutz",
-    "GIT_USER_EMAIL": "eric.slutz@icloud.com",
-    "GIT_USER_SIGNING_KEY": "73972EAEA22EB186"
-  },
-  "vimrc": {
-    "VIM_TAB_WIDTH": "4",
-    "VIM_INDENT_WIDTH": "4",
-    "VIM_LINE_LENGTH": "80",
-    "VIM_MOUSE_MODE": "a",
-    "VIM_CLIPBOARD": "unnamed",
-    "VIM_SCROLL_OFFSET": "3"
-  },
-  "editorconfig": {
-    "EDITOR_CHARSET": "utf-8",
-    "EDITOR_END_OF_LINE": "lf",
-    "EDITOR_INSERT_FINAL_NEWLINE": "true",
-    "EDITOR_TRIM_TRAILING_WHITESPACE": "true",
-    "EDITOR_INDENT_STYLE": "space",
-    "EDITOR_DEFAULT_INDENT_SIZE": "2",
-    "EDITOR_DEFAULT_MAX_LINE_LENGTH": "120",
-    "EDITOR_DOTNET_INDENT_SIZE": "4",
-    "EDITOR_PYTHON_INDENT_SIZE": "4",
-    "EDITOR_PYTHON_MAX_LINE_LENGTH": "80"
-  },
   "brew": {
     "formulas": ["azure-cli", "qemu"],
     "casks": ["font-monaspace"]
+  },
+  "editorconfig": {
+    "charset": "utf-8",
+    "endOfLine": "lf",
+    "insertFinalNewline": "true",
+    "trimTrailingWhitespace": "true",
+    "indentStyle": "space",
+    "defaultIndentSize": "2",
+    "defaultMaxLineLength": "120",
+    "dotnetIndentSize": "4",
+    "pythonIndentSize": "4",
+    "pythonMaxLineLength": "80"
+  },
+  "gitconfig": {
+    "userName": "Eric Slutz",
+    "userEmail": "eric.slutz@icloud.com",
+    "userSigningKey": "73972EAEA22EB186"
+  },
+  "vimrc": {
+    "tabWidth": "4",
+    "indentWidth": "4",
+    "lineLength": "80",
+    "mouseMode": "a",
+    "clipboard": "unnamed",
+    "scrollOffset": "3"
+  },
+  "vscode": {
+    "installPath": "/Applications/Development"
   }
 }

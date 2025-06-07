@@ -2,9 +2,10 @@
 
 ## Context
 
-- This repository configures macOS developer environments, targeting Apple Silicon and macOS Catalina (10.15) or later.
-- Zsh is the default shell (`.zshrc`, `.zprofile`). Vim settings are in (`.vimrc`). Git settings are in `.gitconfig`.
-- The main setup script is `install.sh`, which uses strict error handling, and calls `scripts/create_links.sh` and `scripts/cli_initial_setup.sh`.
+- This repository configures macOS developer environments, targeting Apple Silicon and modern macOS versions.
+- Zsh is the default shell (`.zshrc`, `.zprofile`).
+- The main setup script is `install.sh`, which uses strict error handling, and orchestrates setup through modular scripts in `scripts/`.
+- Supports template-based configuration using `templates/` directory and `parameters.json` for personalized dotfile generation.
 
 ## Coding Conventions
 
@@ -13,6 +14,7 @@
   - Prefer POSIX-compliant shell code unless macOS-specific features are needed.
   - Use existing color-coded output functions and timestamped backups.
   - Write modular scripts and use functions for repeated logic.
+  - Decompose complex operations into focused, single-purpose functions.
   - Validate user input and check command existence before use.
 
 ### Comment Conventions
@@ -70,4 +72,4 @@
 ## Suggestions
 
 - Ensure compatibility with Zsh, the latest macOS, and Apple Silicon.
-- Adhere to the structure, conventions, and best practices already present in this repository.
+- Adhere to the structure, conventions, and best practices already present.
