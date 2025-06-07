@@ -33,6 +33,24 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/utilities.sh"
 
+# Display usage information and available options
+# Usage: usage
+# Returns: always 0
+usage() {
+  cat <<EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -p, --parameters PATH    Path to parameters JSON file for template processing
+    -h, --help              Show this help message
+
+EXAMPLES:
+    $0                      # Link dotfiles without template processing
+    $0 -p parameters.json   # Process templates first, then link dotfiles
+
+EOF
+}
+
 # Normalize long options into short options
 NORMALIZED_ARGS=()
 while [[ $# -gt 0 ]]; do
@@ -92,18 +110,7 @@ while getopts "p:h" opt; do
   case $opt in
   p) PARAMETERS_FILE="$OPTARG" ;;
   h)
-    cat <<EOF
-Usage: $0 [OPTIONS]
-
-OPTIONS:
-    -p, --parameters PATH    Path to parameters JSON file for template processing
-    -h, --help              Show this help message
-
-EXAMPLES:
-    $0                      # Link dotfiles without template processing
-    $0 -p parameters.json   # Process templates first, then link dotfiles
-
-EOF
+    usage
     exit 0
     ;;
   \?)

@@ -52,26 +52,52 @@ cd ~/.dotfiles
 #### Other Options
 
 ```bash
-# Enable debug output for troubleshooting
-DEBUG=1 ./install.sh
-
 # Non-interactive installation (default behavior)
 ./install.sh
 
 # Interactive installation with prompts
 ./install.sh --interactive
+./install.sh -i
 
 # Use custom parameters file for personalization
 ./install.sh --parameters ./parameters.json
+./install.sh -p ./parameters.json
 
 # Combine options (interactive mode with parameters)
 ./install.sh --interactive --parameters ./parameters.json
+./install.sh -i -p ./parameters.json
+
+# Show help message
+./install.sh --help
+./install.sh -h
 
 # Just create symbolic links (skip development tools)
 ./scripts/create_links.sh
 
+# Create symbolic links with template processing
+./scripts/create_links.sh --parameters ./parameters.json
+./scripts/create_links.sh -p ./parameters.json
+
 # Just install development tools (skip dotfiles)
 ./scripts/cli_initial_setup.sh
+
+# Install development tools interactively
+./scripts/cli_initial_setup.sh --interactive
+./scripts/cli_initial_setup.sh -i
+
+# Install development tools with additional packages from parameters
+./scripts/cli_initial_setup.sh --parameters ./parameters.json
+./scripts/cli_initial_setup.sh -p ./parameters.json
+
+# Show help for individual scripts
+./scripts/create_links.sh --help
+./scripts/cli_initial_setup.sh --help
+
+# Enable debug output for troubleshooting any script
+DEBUG=1 ./install.sh
+DEBUG=1 ./scripts/create_links.sh
+DEBUG=1 ./scripts/cli_initial_setup.sh
+DEBUG=1 ./scripts/process_templates.sh -p ./parameters.json
 ```
 
 ## Parameter File Configuration

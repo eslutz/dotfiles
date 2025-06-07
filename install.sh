@@ -156,7 +156,7 @@ export NON_INTERACTIVE
 export PARAMETERS_FILE
 
 # =============================================================================
-# INITIALIZATION
+# INITIALIZATION AND CONFIGURATION
 # =============================================================================
 
 # Override confirm function for non-interactive mode

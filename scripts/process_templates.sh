@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-#!/usr/bin/env bash
 # =============================================================================
 # Template Processing Script
 # =============================================================================
 # Processes dotfile templates with values from parameters JSON file
+# Converts template placeholders ({{PLACEHOLDER_NAME}}) with values from JSON
 #
 # Usage:
 #   ./process_templates.sh -p <parameters_file>
 #   ./process_templates.sh --parameters <parameters_file>
+#
+# This script will:
+#   1. Validate the provided parameters JSON file
+#   2. Process each template file in templates/ directory
+#   3. Replace placeholders with values from JSON parameters
+#   4. Generate corresponding dotfiles in dotfiles/ directory
 
 set -euo pipefail
 
@@ -18,6 +24,23 @@ source "$(dirname "$0")/utilities.sh"
 # =============================================================================
 # OPTION PARSING
 # =============================================================================
+
+# Display usage information and available options
+# Usage: usage
+# Returns: always 0
+usage() {
+  cat <<EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -p, --parameters PATH    Path to parameters JSON file
+    -h, --help              Show this help message
+
+EXAMPLES:
+    $0 -p parameters.json    # Process templates with parameters file
+
+EOF
+}
 
 PARAMETERS_FILE=""
 
@@ -73,17 +96,7 @@ if [[ ${#NORMALIZED_ARGS[@]} -gt 0 ]]; then
     case $opt in
     p) PARAMETERS_FILE="$OPTARG" ;;
     h)
-      cat <<EOF
-Usage: $0 [OPTIONS]
-
-OPTIONS:
-    -p, --parameters PATH    Path to parameters JSON file
-    -h, --help              Show this help message
-
-EXAMPLES:
-    $0 -p parameters.json    # Process templates with parameters file
-
-EOF
+      usage
       exit 0
       ;;
     \?)
@@ -101,14 +114,7 @@ fi
 # Validate parameters file
 if [[ -z "$PARAMETERS_FILE" || ! -f "$PARAMETERS_FILE" ]]; then
   error "Parameters file required and must exist"
-  cat <<EOF
-Usage: $0 [OPTIONS]
-
-OPTIONS:
-    -p, --parameters PATH    Path to parameters JSON file
-    -h, --help              Show this help message
-
-EOF
+  usage
   exit 1
 fi
 
@@ -116,6 +122,10 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES_DIR="$(cd "$SCRIPT_DIR/../dotfiles" && pwd)"
 TEMPLATES_DIR="$(cd "$SCRIPT_DIR/../templates" && pwd)"
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
 
 # Convert camelCase to UPPER_SNAKE_CASE for template placeholder matching
 # Usage: camel_to_snake_case "camelCaseString"

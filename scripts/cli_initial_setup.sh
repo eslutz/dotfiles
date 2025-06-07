@@ -35,6 +35,26 @@ source "$(dirname "$0")/utilities.sh"
 # OPTION PARSING
 # =============================================================================
 
+# Display usage information and available options
+# Usage: usage
+# Returns: always 0
+usage() {
+  cat <<EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -i, --interactive        Run interactively (prompt for confirmations)
+    -p, --parameters PATH    Path to parameters JSON file for additional packages
+    -h, --help              Show this help message
+
+EXAMPLES:
+    $0                      # Non-interactive setup (default)
+    $0 --interactive        # Interactive setup with prompts
+    $0 -p parameters.json   # Use parameters file for additional packages
+
+EOF
+}
+
 # Normalize long options into short options
 NORMALIZED_ARGS=()
 while [[ $# -gt 0 ]]; do
@@ -99,20 +119,7 @@ while getopts "p:ih" opt; do
   p) PARAMETERS_FILE="$OPTARG" ;;
   i) NON_INTERACTIVE=false ;;
   h)
-    cat <<EOF
-Usage: $0 [OPTIONS]
-
-OPTIONS:
-    -i, --interactive        Run interactively (prompt for confirmations)
-    -p, --parameters PATH    Path to parameters JSON file for additional packages
-    -h, --help              Show this help message
-
-EXAMPLES:
-    $0                      # Non-interactive setup (default)
-    $0 --interactive        # Interactive setup with prompts
-    $0 -p parameters.json   # Use parameters file for additional packages
-
-EOF
+    usage
     exit 0
     ;;
   \?)
@@ -223,6 +230,9 @@ setup_homebrew() {
 # PERMISSIONS AND COMPATIBILITY SETUP
 # =============================================================================
 
+# Fix Homebrew permissions to resolve Zsh security warnings
+# Usage: setup_homebrew_permissions
+# Returns: 0 on success, 1 on failure
 setup_homebrew_permissions() {
   subsection "Fixing Homebrew permissions (Zsh security)"
 
@@ -243,6 +253,9 @@ setup_homebrew_permissions() {
   return 0
 }
 
+# Install Rosetta 2 for Intel app compatibility on Apple Silicon Macs
+# Usage: setup_rosetta
+# Returns: 0 on success, 1 on failure
 setup_rosetta() {
   subsection "Checking Apple Silicon compatibility"
 
@@ -355,8 +368,9 @@ install_homebrew_packages() {
 # GITHUB CLI SETUP FUNCTIONS
 # =============================================================================
 
-# Function to setup GitHub CLI with authentication and extensions
-# Installs GitHub CLI, authenticates user, and installs Copilot extension
+# Install and configure GitHub CLI with authentication and Copilot extension
+# Usage: setup_github_cli
+# Returns: 0 on success, 1 on failure
 setup_github_cli() {
   # Install GitHub CLI if not already installed
   if ! command_exists gh; then
@@ -410,9 +424,9 @@ setup_github_cli() {
 # NODE.JS SETUP FUNCTIONS
 # =============================================================================
 
-# Function to setup and configure Node.js via NVM
-# Installs NVM via Homebrew and sets up the latest LTS Node.js version
-# Also configures shell profile to source NVM automatically in future sessions
+# Install and configure Node.js via NVM (Node Version Manager)
+# Usage: setup_node
+# Returns: 0 on success, 1 on failure
 setup_node() {
   local shell_profile nvm_dir="$HOME/.nvm"
   export NVM_DIR="$nvm_dir"
@@ -498,9 +512,9 @@ setup_node() {
 # VISUAL STUDIO CODE INSTALLATION FUNCTIONS
 # =============================================================================
 
-# Function to install Visual Studio Code
-# Downloads, extracts, and installs VS Code from official Microsoft source
-# Includes interactive destination selection and sudo fallback for system directories
+# Download and install Visual Studio Code with interactive destination selection
+# Usage: install_vscode
+# Returns: 0 on success, 1 on failure
 install_vscode() {
   local tmp_dir
   tmp_dir=$(mktemp -d)
@@ -622,7 +636,10 @@ install_vscode() {
 # GPG SUITE INSTALLATION FUNCTIONS
 # =============================================================================
 
-# Function to clean up GPG Suite installation
+# Clean up GPG Suite installation temporary files and mounted disk images
+# Usage: cleanup_gpg_install "/path/to/temp/dir"
+# Arguments: tmp_dir - temporary directory path to remove
+# Returns: always 0
 cleanup_gpg_install() {
   local tmp_dir="$1"
   # Attempt to detach the disk image if it's mounted
@@ -638,7 +655,9 @@ cleanup_gpg_install() {
   rm -rf "$tmp_dir"
 }
 
-# Function to install GPG Suite
+# Download and install GPG Suite from official source
+# Usage: install_gpg_suite
+# Returns: 0 on success, 1 on failure
 install_gpg_suite() {
   local tmp_dir
   tmp_dir=$(mktemp -d)
@@ -696,7 +715,9 @@ install_gpg_suite() {
 # GPG CONFIGURATION FUNCTIONS
 # =============================================================================
 
-# Function to configure GPG agent with pinentry-mac
+# Configure GPG agent with pinentry-mac for secure key management
+# Usage: setup_gpg_agent
+# Returns: 0 on success
 setup_gpg_agent() {
   subsection "Configuring GPG agent"
 
@@ -727,7 +748,10 @@ setup_gpg_agent() {
 # FORK GIT CLIENT INSTALLATION FUNCTIONS
 # =============================================================================
 
-# Function to clean up Fork installation
+# Clean up Fork installation temporary files and mounted disk images
+# Usage: cleanup_fork_install "/path/to/temp/dir"
+# Arguments: tmp_dir - temporary directory path to remove
+# Returns: always 0
 cleanup_fork_install() {
   local tmp_dir="$1"
   # Attempt to detach the disk image if it's mounted
@@ -743,7 +767,9 @@ cleanup_fork_install() {
   rm -rf "$tmp_dir"
 }
 
-# Function to install Fork Git client
+# Download and install Fork Git client from official source
+# Usage: install_fork
+# Returns: 0 on success, 1 on failure
 install_fork() {
   local tmp_dir
   tmp_dir=$(mktemp -d)
@@ -803,7 +829,9 @@ install_fork() {
 # .NET SDK INSTALLATION FUNCTIONS
 # =============================================================================
 
-# Function to install .NET SDK
+# Download and install .NET SDK using official Microsoft installer script
+# Usage: install_dotnet
+# Returns: 0 on success, 1 on failure
 install_dotnet() {
   local tmp_dir
   tmp_dir=$(mktemp -d)
@@ -929,6 +957,9 @@ setup_homebrew_packages() {
 # SUMMARY FUNCTIONS
 # =============================================================================
 
+# Display setup summary with failure details and recovery information
+# Usage: show_summary
+# Returns: 0 if no failures, 1 if there were failures
 show_summary() {
   # Only show detailed summary if there were failures
   # Success case is handled by main install script
@@ -954,6 +985,9 @@ show_summary() {
 # MAIN EXECUTION FUNCTION
 # =============================================================================
 
+# Main function to orchestrate the complete macOS development environment setup
+# Usage: main
+# Returns: exits with code based on success/failure of operations
 main() {
   section "Starting macOS Development Environment Setup"
 
