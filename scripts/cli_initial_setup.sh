@@ -22,23 +22,106 @@
 set -euo pipefail
 
 # =============================================================================
-# OPTION PARSING
+# INITIALIZATION
 # =============================================================================
 
 PARAMETERS_FILE=""
 
+# Source shared utilities (output formatting and helper functions)
+# shellcheck disable=SC1091
+source "$(dirname "$0")/utilities.sh"
+
+# =============================================================================
+# OPTION PARSING
+# =============================================================================
+
+# Normalize long options into short options
+NORMALIZED_ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
   --parameters)
-    PARAMETERS_FILE="$2"
+    if [[ $# -lt 2 || "$2" == -* ]]; then
+      error "Option --parameters requires an argument"
+      exit 1
+    fi
+    NORMALIZED_ARGS+=("-p" "$2")
     shift 2
     ;;
   --interactive)
-    NON_INTERACTIVE=false
+    NORMALIZED_ARGS+=("-i")
     shift
     ;;
-  *)
+  --help)
+    NORMALIZED_ARGS+=("-h")
     shift
+    ;;
+  --*)
+    error "Unknown option: $1"
+    exit 1
+    ;;
+  -*)
+    # Handle short options (pass through)
+    if [[ "$1" =~ ^-[pih]$ ]]; then
+      if [[ "$1" == "-p" ]]; then
+        if [[ $# -lt 2 || "$2" == -* ]]; then
+          error "Option -p requires an argument"
+          exit 1
+        fi
+        NORMALIZED_ARGS+=("$1" "$2")
+        shift 2
+      else
+        NORMALIZED_ARGS+=("$1")
+        shift
+      fi
+    else
+      error "Unknown option: $1"
+      exit 1
+    fi
+    ;;
+  *)
+    error "Unexpected argument: $1"
+    exit 1
+    ;;
+  esac
+done
+
+# Reset the positional parameters to the normalized arguments
+if [[ ${#NORMALIZED_ARGS[@]} -gt 0 ]]; then
+  set -- "${NORMALIZED_ARGS[@]}"
+else
+  set --
+fi
+
+# Parse command line arguments with getopts
+OPTIND=1 # Reset the option index
+while getopts "p:ih" opt; do
+  case $opt in
+  p) PARAMETERS_FILE="$OPTARG" ;;
+  i) NON_INTERACTIVE=false ;;
+  h)
+    cat <<EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -i, --interactive        Run interactively (prompt for confirmations)
+    -p, --parameters PATH    Path to parameters JSON file for additional packages
+    -h, --help              Show this help message
+
+EXAMPLES:
+    $0                      # Non-interactive setup (default)
+    $0 --interactive        # Interactive setup with prompts
+    $0 -p parameters.json   # Use parameters file for additional packages
+
+EOF
+    exit 0
+    ;;
+  \?)
+    error "Invalid option: -$OPTARG"
+    exit 1
+    ;;
+  :)
+    error "Option -$OPTARG requires an argument"
+    exit 1
     ;;
   esac
 done
@@ -57,10 +140,6 @@ NON_INTERACTIVE="${NON_INTERACTIVE:-true}"
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
-
-# Source shared utilities (output formatting and helper functions)
-# shellcheck disable=SC1091
-source "$(dirname "$0")/utilities.sh"
 
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then

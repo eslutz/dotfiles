@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 # =============================================================================
 # Template Processing Script
 # =============================================================================
 # Processes dotfile templates with values from parameters JSON file
 #
 # Usage:
-#   ./process_templates.sh <parameters_file>
+#   ./process_templates.sh -p <parameters_file>
+#   ./process_templates.sh --parameters <parameters_file>
 
 set -euo pipefail
 
@@ -13,10 +15,111 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source "$(dirname "$0")/utilities.sh"
 
-# Get parameters file from argument
-PARAMETERS_FILE="${1:-}"
+# =============================================================================
+# OPTION PARSING
+# =============================================================================
+
+PARAMETERS_FILE=""
+
+# Normalize long options into short options
+NORMALIZED_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  --parameters)
+    if [[ $# -lt 2 || "$2" == -* ]]; then
+      error "Option --parameters requires an argument"
+      exit 1
+    fi
+    NORMALIZED_ARGS+=("-p" "$2")
+    shift 2
+    ;;
+  --help)
+    NORMALIZED_ARGS+=("-h")
+    shift
+    ;;
+  --*)
+    error "Unknown option: $1"
+    exit 1
+    ;;
+  -*)
+    # Handle short options (pass through)
+    if [[ "$1" =~ ^-[ph]$ ]]; then
+      if [[ "$1" == "-p" ]]; then
+        if [[ $# -lt 2 || "$2" == -* ]]; then
+          error "Option -p requires an argument"
+          exit 1
+        fi
+        NORMALIZED_ARGS+=("$1" "$2")
+        shift 2
+      else
+        NORMALIZED_ARGS+=("$1")
+        shift
+      fi
+    else
+      error "Unknown option: $1"
+      exit 1
+    fi
+    ;;
+  *)
+    # Support legacy positional argument for backwards compatibility
+    if [[ -z "$PARAMETERS_FILE" ]]; then
+      PARAMETERS_FILE="$1"
+      shift
+    else
+      error "Unexpected argument: $1"
+      exit 1
+    fi
+    ;;
+  esac
+done
+
+# Reset the positional parameters to the normalized arguments if we have any
+if [[ ${#NORMALIZED_ARGS[@]} -gt 0 ]]; then
+  set -- "${NORMALIZED_ARGS[@]}"
+
+  # Parse command line arguments with getopts
+  OPTIND=1 # Reset the option index
+  while getopts "p:h" opt; do
+    case $opt in
+    p) PARAMETERS_FILE="$OPTARG" ;;
+    h)
+      cat <<EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -p, --parameters PATH    Path to parameters JSON file
+    -h, --help              Show this help message
+
+EXAMPLES:
+    $0 -p parameters.json    # Process templates with parameters file
+    $0 parameters.json       # Legacy: positional argument (still supported)
+
+EOF
+      exit 0
+      ;;
+    \?)
+      error "Invalid option: -$OPTARG"
+      exit 1
+      ;;
+    :)
+      error "Option -$OPTARG requires an argument"
+      exit 1
+      ;;
+    esac
+  done
+fi
+
+# Validate parameters file
 if [[ -z "$PARAMETERS_FILE" || ! -f "$PARAMETERS_FILE" ]]; then
   error "Parameters file required and must exist"
+  cat <<EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -p, --parameters PATH    Path to parameters JSON file
+    -h, --help              Show this help message
+
+EOF
   exit 1
 fi
 

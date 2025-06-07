@@ -36,6 +36,14 @@ NON_INTERACTIVE=true # Non-interactive is the default
 PARAMETERS_FILE=""
 
 # =============================================================================
+# INITIALIZATION
+# =============================================================================
+
+# Source shared utilities (output formatting and helper functions)
+# shellcheck disable=SC1091
+source "${DOTFILES_DIR}/scripts/utilities.sh"
+
+# =============================================================================
 # OPTION PARSING
 # =============================================================================
 
@@ -60,23 +68,83 @@ EXAMPLES:
 EOF
 }
 
-# Parse command line options
+# Normalize long options into short options
+NORMALIZED_ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
-  -i | --interactive)
-    NON_INTERACTIVE=false
+  --interactive)
+    NORMALIZED_ARGS+=("-i")
     shift
     ;;
-  -p | --parameters)
-    PARAMETERS_FILE="$2"
+  --parameters)
+    if [[ $# -lt 2 || "$2" == -* ]]; then
+      error "Option --parameters requires an argument"
+      exit 1
+    fi
+    NORMALIZED_ARGS+=("-p" "$2")
     shift 2
     ;;
-  -h | --help)
+  --help)
+    NORMALIZED_ARGS+=("-h")
+    shift
+    ;;
+  --*)
+    error "Unknown option: $1"
+    usage
+    exit 1
+    ;;
+  -*)
+    # Handle short options (pass through)
+    if [[ "$1" =~ ^-[iph]$ ]]; then
+      if [[ "$1" == "-p" ]]; then
+        if [[ $# -lt 2 || "$2" == -* ]]; then
+          error "Option -p requires an argument"
+          exit 1
+        fi
+        NORMALIZED_ARGS+=("$1" "$2")
+        shift 2
+      else
+        NORMALIZED_ARGS+=("$1")
+        shift
+      fi
+    else
+      error "Unknown option: $1"
+      usage
+      exit 1
+    fi
+    ;;
+  *)
+    error "Unexpected argument: $1"
+    usage
+    exit 1
+    ;;
+  esac
+done
+
+# Reset the positional parameters to the normalized arguments
+if [[ ${#NORMALIZED_ARGS[@]} -gt 0 ]]; then
+  set -- "${NORMALIZED_ARGS[@]}"
+else
+  set --
+fi
+
+# Parse command line arguments with getopts
+OPTIND=1 # Reset the option index
+while getopts "ip:h" opt; do
+  case $opt in
+  i) NON_INTERACTIVE=false ;;
+  p) PARAMETERS_FILE="$OPTARG" ;;
+  h)
     usage
     exit 0
     ;;
-  *)
-    echo "Unknown option: $1"
+  \?)
+    error "Invalid option: -$OPTARG"
+    usage
+    exit 1
+    ;;
+  :)
+    error "Option -$OPTARG requires an argument"
     usage
     exit 1
     ;;
@@ -90,10 +158,6 @@ export PARAMETERS_FILE
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
-
-# Source shared utilities (output formatting and helper functions)
-# shellcheck disable=SC1091
-source "${DOTFILES_DIR}/scripts/utilities.sh"
 
 # Override confirm function for non-interactive mode
 if [[ "$NON_INTERACTIVE" == "true" ]]; then

@@ -25,14 +25,93 @@ set -euo pipefail
 
 PARAMETERS_FILE=""
 
+# Get the directory where this script is located (scripts/)
+# shellcheck disable=SC2155
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source shared utilities (output formatting and helper functions)
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/utilities.sh"
+
+# Normalize long options into short options
+NORMALIZED_ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
   --parameters)
-    PARAMETERS_FILE="$2"
+    if [[ $# -lt 2 || "$2" == -* ]]; then
+      error "Option --parameters requires an argument"
+      exit 1
+    fi
+    NORMALIZED_ARGS+=("-p" "$2")
     shift 2
     ;;
+  --help)
+    NORMALIZED_ARGS+=("-h")
+    shift
+    ;;
+  --*)
+    error "Unknown option: $1"
+    exit 1
+    ;;
+  -*)
+    # Handle short options (pass through)
+    if [[ "$1" =~ ^-[ph]$ ]]; then
+      if [[ "$1" == "-p" ]]; then
+        if [[ $# -lt 2 || "$2" == -* ]]; then
+          error "Option -p requires an argument"
+          exit 1
+        fi
+        NORMALIZED_ARGS+=("$1" "$2")
+        shift 2
+      else
+        NORMALIZED_ARGS+=("$1")
+        shift
+      fi
+    else
+      error "Unknown option: $1"
+      exit 1
+    fi
+    ;;
   *)
-    echo "Unknown option: $1"
+    error "Unexpected argument: $1"
+    exit 1
+    ;;
+  esac
+done
+
+# Reset the positional parameters to the normalized arguments
+if [[ ${#NORMALIZED_ARGS[@]} -gt 0 ]]; then
+  set -- "${NORMALIZED_ARGS[@]}"
+else
+  set --
+fi
+
+# Parse command line arguments with getopts
+OPTIND=1 # Reset the option index
+while getopts "p:h" opt; do
+  case $opt in
+  p) PARAMETERS_FILE="$OPTARG" ;;
+  h)
+    cat <<EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -p, --parameters PATH    Path to parameters JSON file for template processing
+    -h, --help              Show this help message
+
+EXAMPLES:
+    $0                      # Link dotfiles without template processing
+    $0 -p parameters.json   # Process templates first, then link dotfiles
+
+EOF
+    exit 0
+    ;;
+  \?)
+    error "Invalid option: -$OPTARG"
+    exit 1
+    ;;
+  :)
+    error "Option -$OPTARG requires an argument"
     exit 1
     ;;
   esac
@@ -42,9 +121,6 @@ done
 # CONFIGURATION
 # =============================================================================
 
-# Get the directory where this script is located (scripts/)
-# shellcheck disable=SC2155
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Get the dotfiles directory (dotfiles/ subdirectory) - built the same way as SCRIPT_DIR
 # shellcheck disable=SC2155
 readonly DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../dotfiles" && pwd)"
@@ -70,10 +146,6 @@ LINK_FAILURES=()
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
-
-# Source shared utilities (output formatting and helper functions)
-# shellcheck disable=SC1091
-source "${SCRIPT_DIR}/utilities.sh"
 
 # Validate we're not running as root
 validate_not_root || {
