@@ -10,7 +10,7 @@
 
 # Security and privacy settings
 export LESSHISTFILE=/dev/null           # Disable less history file
-umask {{ZSH_UMASK}}                               # Set default file permissions
+umask 022                               # Set default file permissions
 export HOMEBREW_NO_ANALYTICS=1          # Disable Homebrew analytics
 export HOMEBREW_NO_INSECURE_REDIRECT=1  # Prevent insecure redirects
 
@@ -18,7 +18,7 @@ export HOMEBREW_NO_INSECURE_REDIRECT=1  # Prevent insecure redirects
 export GPG_TTY=$(tty)
 
 # Node Version Manager (NVM) setup
-export NVM_DIR="{{ZSH_NVM_DIR}}"
+export NVM_DIR="$HOME/.nvm"
 [ -s "$(brew --prefix)/opt/nvm/nvm.sh" ] && . "$(brew --prefix)/opt/nvm/nvm.sh"
 
 # =============================================================================
@@ -75,7 +75,7 @@ fi
 alias refresh_zsh="source ~/.zshrc"
 
 # Development utilities
-alias {{ZSH_NPM_UPDATE_ALIAS}}="{{ZSH_NPM_UPDATE_COMMAND}}"
+alias npmupdatemajor="npx npm-check-updates -u"
 
 # =============================================================================
 # CUSTOM PROMPT WITH GIT INTEGRATION
@@ -88,14 +88,14 @@ autoload -Uz vcs_info
 precmd() { vcs_info }
 # Configure vcs_info to show Git branch in cyan color with parentheses
 # %b expands to the current branch name
-zstyle ':vcs_info:git:*' formats '%F{{{ZSH_GIT_BRANCH_COLOR}}}(%b)%f'
+zstyle ':vcs_info:git:*' formats '%F{cyan}(%b)%f'
 # Enable prompt substitution so variables are expanded in prompt string
 setopt PROMPT_SUBST
 
 # Set custom prompt: user@host directory (git-branch) >
 # %n = username, %m = hostname, %1~ = current directory (last component only)
 # ${vcs_info_msg_0_} = Git branch info from vcs_info (empty if not in Git repo)
-PROMPT='{{ZSH_PROMPT_FORMAT}}'
+PROMPT='%n@%m %1~${vcs_info_msg_0_} > '
 
 # =============================================================================
 # TOOL INTEGRATIONS
