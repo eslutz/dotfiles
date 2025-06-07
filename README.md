@@ -443,7 +443,7 @@ Enable detailed logging for troubleshooting:
 DEBUG=1 ./install.sh
 DEBUG=1 ./scripts/create_links.sh
 DEBUG=1 ./scripts/cli_initial_setup.sh
-DEBUG=1 ./scripts/process_templates.sh ./parameters.json
+DEBUG=1 ./scripts/process_templates.sh -p ./parameters.json
 ```
 
 Debug mode provides:

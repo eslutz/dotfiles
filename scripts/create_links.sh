@@ -442,7 +442,7 @@ process_templates_if_needed() {
 
     local template_processor="$SCRIPT_DIR/process_templates.sh"
     if [[ -x "$template_processor" ]]; then
-      if "$template_processor" "$PARAMETERS_FILE"; then
+      if "$template_processor" -p "$PARAMETERS_FILE"; then
         success "Templates processed successfully"
         return 0
       else

@@ -155,8 +155,10 @@ snake_to_camel_case() {
         result="$word"
         first_word=false
       else
-        # Capitalize first letter and append
-        result="${result}${word^}"
+        # Capitalize first letter and append (POSIX compatible)
+        first_char=$(echo "$word" | cut -c1 | tr '[:lower:]' '[:upper:]')
+        rest_chars=$(echo "$word" | cut -c2-)
+        result="${result}${first_char}${rest_chars}"
       fi
     fi
   done
