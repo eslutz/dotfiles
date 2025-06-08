@@ -966,14 +966,13 @@ show_summary() {
   local total_failures=${#SETUP_FAILURES[@]}
 
   if [[ $total_failures -gt 0 ]]; then
-    section "macOS Setup Issues"
+    section "Setup Summary"
     warn "$total_failures component(s) failed to install:"
     for fail in "${SETUP_FAILURES[@]}"; do
       error "  $fail"
     done
     echo
-    info "Re-run this script to retry: $0"
-    info "Or install failed components manually"
+    info "💡 You can retry by running: $0"
     return 1
   else
     # Success - main script will show final summary
@@ -992,39 +991,36 @@ main() {
   section "Starting macOS Development Environment Setup"
 
   # Core system setup
-  setup_homebrew || {
-    warn "Homebrew setup failed, but continuing"
+  if ! setup_homebrew; then
     SETUP_FAILURES+=("Homebrew")
-  }
+  fi
   setup_homebrew_permissions
   setup_rosetta
 
   # Install Homebrew packages (core and parameter file packages)
-  setup_homebrew_packages || {
-    warn "Homebrew package setup failed, but continuing"
+  if ! setup_homebrew_packages; then
+    debug "Homebrew package setup failed, but continuing"
     SETUP_FAILURES+=("Homebrew packages")
-  }
+  fi
 
   # GPG agent configuration
-  setup_gpg_agent || {
-    warn "GPG agent configuration failed, but continuing"
-  }
+  if ! setup_gpg_agent; then
+    debug "GPG agent configuration failed, but continuing"
+  fi
 
   # GitHub CLI setup
   section "Setting up GitHub CLI..."
-  setup_github_cli || {
-    warn "GitHub CLI setup failed, but continuing"
+  if ! setup_github_cli; then
     info "You can try setting up GitHub CLI later by running 'gh auth login'"
     info "To install the GitHub Copilot CLI extension, run 'gh extension install github/gh-copilot'"
-  }
+  fi
   info "GitHub CLI setup complete"
 
   # Node.js setup
   section "Setting up Node.js environment..."
-  setup_node || {
-    warn "Node.js setup failed, but continuing"
+  if ! setup_node; then
     info "You can try setting up Node.js later by running 'nvm install --lts'"
-  }
+  fi
   info "Node.js environment setup complete"
 
   # Visual Studio Code setup
@@ -1066,7 +1062,6 @@ main() {
   # GPG Suite setup
   section "Installing GPG Suite..."
   if ! install_gpg_suite; then
-    warn "GPG Suite installation failed, but continuing"
     SETUP_FAILURES+=("GPG Suite")
   else
     info "GPG Suite setup complete"
@@ -1075,7 +1070,6 @@ main() {
   # Fork Git client setup
   section "Installing Fork Git client..."
   if ! install_fork; then
-    warn "Fork Git client installation failed, but continuing"
     SETUP_FAILURES+=("Fork Git client")
   else
     info "Fork Git client setup complete"
@@ -1084,7 +1078,6 @@ main() {
   # .NET SDK setup
   section "Installing .NET SDK..."
   if ! install_dotnet; then
-    warn ".NET SDK installation failed, but continuing"
     SETUP_FAILURES+=(".NET SDK")
   else
     info ".NET SDK setup complete"

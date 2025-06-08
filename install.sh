@@ -301,8 +301,8 @@ setup_macos_environment() {
     fi
 
     if ! eval "$cmd"; then
-      error "Failed to complete macOS CLI setup"
-      FAILURES+=("macOS CLI setup failed")
+      # The CLI setup script already reported specific failures
+      FAILURES+=("Some development tools failed to install")
       return 1
     else
       success "macOS CLI setup completed successfully!"
