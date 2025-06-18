@@ -4,24 +4,74 @@
 
 A personal dotfiles repository for quickly setting up a consistent, robust development environment on macOS. This setup is designed for Apple Silicon and supports the latest macOS versions with Zsh as the default shell.
 
+## Table of Contents
+
+- [Key Features](#key-features)
+- [Installed Software](#installed-software)
+  - [Essential Tools](#essential-tools)
+  - [Development Utilities](#development-utilities)
+  - [Additional Applications](#additional-applications)
+- [Installation](#installation)
+- [Parameter File Configuration](#parameter-file-configuration)
+- [Customization](#customization)
+- [Backup and Recovery](#backup-and-recovery)
+- [Scripts](#scripts)
+- [Configuration Files](#configuration-files)
+- [Troubleshooting](#troubleshooting)
+- [Technical Specifications](#technical-specifications)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Key Features
 
-### Robust Installation System
-
-- **Comprehensive Error Handling**: Uses `set -euo pipefail` for strict error detection
-- **Automatic Backup System**: Creates timestamped backups of existing configurations before making changes
+- **Robust Installation**: Comprehensive error handling with automatic backups and graceful degradation
 - **Smart Symlinks**: Intelligent symbolic link creation with duplicate detection and validation
-- **Graceful Degradation**: Continues installation even if individual components fail, with detailed reporting
-- **Interactive Installation**: User-friendly prompts with sensible defaults
-- **Parameter File Support**: JSON-based configuration for personalizing Git, Vim, and EditorConfig settings, plus installing additional Homebrew packages
+- **Parameter File Support**: JSON configuration for personalizing settings and additional Homebrew packages
+- **Apple Silicon Optimized**: Designed specifically for modern macOS and Apple Silicon
+- **PATH Management**: Prevents PATH duplication while ensuring proper tool precedence
+- **Safe to Re-run**: Idempotent operations that detect existing installations
+- **Interactive & Non-interactive**: User-friendly prompts with sensible defaults, plus automation support
 - **Debug Support**: Enable detailed logging with `DEBUG=1` environment variable
-- **Trap-based Cleanup**: Ensures temporary files are cleaned up even if scripts are interrupted
 
-### Intelligent Environment Detection
+## Installed Software
 
-- **macOS & Apple Silicon Optimized**: Designed for modern macOS and Apple Silicon
-- **Path Management**: Prevents PATH duplication while ensuring proper tool precedence
-- **Shell Integration**: Configures both login (`.zprofile`) and interactive (`.zshrc`) shell sessions
+### Essential Tools
+
+| Tool               | Purpose                                     | Installation Method |
+| ------------------ | ------------------------------------------- | ------------------- |
+| Homebrew           | Package manager for macOS                   | Direct download     |
+| Git                | Version control (newer than system Git)     | Homebrew formula    |
+| GitHub CLI         | GitHub integration with Copilot extension   | Homebrew formula    |
+| Node.js            | JavaScript runtime via NVM (latest LTS)     | Homebrew NVM        |
+| .NET SDK           | Microsoft development platform (latest LTS) | Direct download     |
+| Azure CLI          | Azure cloud management                      | Homebrew formula    |
+| Visual Studio Code | Primary code editor with CLI integration    | Direct download     |
+| Fork Git client    | Advanced Git GUI with visual merge tools    | Direct download     |
+
+### Development Utilities
+
+| Utility    | Category    | Purpose                                       | Installation Method |
+| ---------- | ----------- | --------------------------------------------- | ------------------- |
+| wget       | System Tool | Download files from the web via CLI           | Homebrew formula    |
+| curl       | System Tool | Data transfer with URL syntax                 | Homebrew formula    |
+| jq         | System Tool | JSON processor for the command line           | Homebrew formula    |
+| tree       | System Tool | Directory listings in tree format             | Homebrew formula    |
+| htop       | System Tool | Interactive process viewer                    | Homebrew formula    |
+| Monaspace  | Fonts       | Coding font family for improved readability   | Homebrew cask       |
+| GPG Suite  | Security    | Key management and commit signing             | Direct download     |
+| PowerShell | Shell       | Cross-platform scripting and automation shell | Homebrew cask       |
+
+### Additional Applications
+
+The `install_additional_apps.sh` script installs applications that require direct download and installer execution rather than package manager installation. Currently installed applications include:
+
+| Application       | Category       | Purpose                                 | Installation Method |
+| ----------------- | -------------- | --------------------------------------- | ------------------- |
+| Parallels Desktop | Virtualization | Run Windows and other operating systems | DMG mount & copy    |
+| Steam             | Gaming         | Digital game distribution platform      | DMG mount & copy    |
+| GOG Galaxy        | Gaming         | DRM-free game library and launcher      | PKG installer       |
+
+> **Note**: By default, additional apps are not installed in non-interactive mode. To include these applications, set `"installAdditionalApps": true` in your parameters file, use interactive mode, or run the script directly.
 
 ## Installation
 
@@ -32,7 +82,8 @@ The installation script will:
 1. **Environment Detection**: Automatically detect your macOS version
 2. **Symbolic Links**: Create symbolic links for dotfiles in your home directory with automatic backup
 3. **Development Tools**: Optionally install and configure essential development tools
-4. **Validation**: Verify installations and provide feedback on any issues
+4. **Additional Applications**: Optionally install additional applications
+5. **Validation**: Verify installations and provide feedback on any issues
 
 > Note: The process is safe to run on existing systems—backups are automatic, original files are preserved, and installs are resumable.
 
@@ -71,14 +122,14 @@ cd ~/.dotfiles
 ./install.sh --help
 ./install.sh -h
 
-# Just create symbolic links (skip development tools)
+# Just create symbolic links (skip development tools and additional app installation)
 ./scripts/create_links.sh
 
 # Create symbolic links with template processing
 ./scripts/create_links.sh --parameters ./parameters.json
 ./scripts/create_links.sh -p ./parameters.json
 
-# Just install development tools (skip dotfiles)
+# Just install development tools (skip dotfiles and additional app installation)
 ./scripts/cli_initial_setup.sh
 
 # Install development tools interactively
@@ -89,6 +140,14 @@ cd ~/.dotfiles
 ./scripts/cli_initial_setup.sh --parameters ./parameters.json
 ./scripts/cli_initial_setup.sh -p ./parameters.json
 
+# Just install additional apps (skip development tools and dotfiles)
+./scripts/install_additional_apps.sh
+
+# Install specific components based on your needs
+./install.sh --interactive --parameters ./parameters.json  # Full interactive setup with parameters
+./scripts/create_links.sh -p ./parameters.json             # Only dotfiles with template processing
+./scripts/cli_initial_setup.sh -i -p ./parameters.json     # Only development tools with parameters
+
 # Show help for individual scripts
 ./scripts/create_links.sh --help
 ./scripts/cli_initial_setup.sh --help
@@ -97,6 +156,7 @@ cd ~/.dotfiles
 DEBUG=1 ./install.sh
 DEBUG=1 ./scripts/create_links.sh
 DEBUG=1 ./scripts/cli_initial_setup.sh
+DEBUG=1 ./scripts/install_additional_apps.sh
 DEBUG=1 ./scripts/process_templates.sh -p ./parameters.json
 ```
 
@@ -141,19 +201,21 @@ The parameter file uses JSON format and supports the following configuration sec
   },
   "vscode": {
     "installPath": "/Applications/Development"
-  }
+  },
+  "installAdditionalApps": true
 }
 ```
 
 ### Configuration Sections
 
-| Section        | Purpose                                                               | Required |
-| -------------- | --------------------------------------------------------------------- | -------- |
-| `brew`         | Specifies additional Homebrew formulas and casks to install           | No       |
-| `editorconfig` | Configures EditorConfig settings (generates `.editorconfig` file)     | No       |
-| `gitconfig`    | Personalizes Git configuration template (generates `.gitconfig` file) | No       |
-| `vimrc`        | Customizes Vim editor settings (generates `.vimrc` file)              | No       |
-| `vscode`       | Configures Visual Studio Code installation settings                   | No       |
+| Section                 | Purpose                                                                | Required |
+| ----------------------- | ---------------------------------------------------------------------- | -------- |
+| `brew`                  | Specifies additional Homebrew formulas and casks to install            | No       |
+| `editorconfig`          | Configures EditorConfig settings (generates `.editorconfig` file)      | No       |
+| `gitconfig`             | Personalizes Git configuration template (generates `.gitconfig` file)  | No       |
+| `vimrc`                 | Customizes Vim editor settings (generates `.vimrc` file)               | No       |
+| `vscode`                | Configures Visual Studio Code installation settings                    | No       |
+| `installAdditionalApps` | Controls whether additional apps are installed via download installers | No       |
 
 #### Homebrew Configuration (`brew`)
 
@@ -203,6 +265,37 @@ Configures Visual Studio Code installation behavior:
   - Useful for organizing applications in custom folders like `/Applications/Development`
   - Leave empty or omit to use default interactive installation behavior
 
+#### Additional Apps Configuration (`installAdditionalApps`)
+
+Controls the automatic installation of additional applications through download installers:
+
+- **installAdditionalApps**: Boolean flag (true/false) that determines whether additional apps should be installed
+  - **Default**: `false` - Additional apps are not installed unless explicitly requested
+  - **When `true`**: Automatically installs Parallels Desktop, Steam, and GOG Galaxy during setup
+  - **When `false` or omitted**: Additional apps installation is skipped in non-interactive mode
+  - **Interactive mode**: User will be prompted regardless of this setting (defaults to "Yes")
+  - **Individual installation**: Apps can always be installed separately using `./scripts/install_additional_apps.sh`
+
+**Example configurations:**
+
+```json
+{
+  "installAdditionalApps": true // Always install additional apps
+}
+```
+
+```json
+{
+  "installAdditionalApps": false // Skip additional apps (explicit)
+}
+```
+
+```json
+{
+  // Omit entirely - same as false, skip additional apps
+}
+```
+
 ### Template Processing
 
 When a parameter file is provided, the installation process:
@@ -242,17 +335,53 @@ The dotfiles repository uses a two-stage approach for configuration management:
 
 This design allows the repository to work immediately with sensible defaults while supporting full customization when needed. The existing dotfiles serve dual purposes: default configurations when no parameters are provided, and target locations for processed templates when parameters are provided.
 
+## Customization
+
+- **Add new dotfiles:** Place your file in the `dotfiles/` directory and run `./scripts/create_links.sh` (auto-detects new files). For always-linked files, add to `CORE_DOTFILES` in `create_links.sh`.
+- **Edit configs:** Edit dotfiles in your home directory or the repo (symlinks keep them in sync). Commit and push to save changes.
+- **Shell customization:** `.zprofile` handles login shell, PATH, and env; `.zshrc` manages prompt, aliases, completions, and integrations.
+- **Tool customization:** Edit the formulas/casks arrays in `scripts/cli_initial_setup.sh` to add or remove Homebrew tools from the setup process.
+
+## Backup and Recovery
+
+### Backups
+
+- **Location**: `~/.dotfiles_backup/YYYYMMDD_HHMMSS/`
+- **Scope**: Only files that would be overwritten are backed up
+- **Preservation**: Original file permissions and timestamps maintained
+- **Organization**: Each installation run creates a separate timestamped directory
+
+### Recovery Operations
+
+```bash
+# List all available backups
+ls -la ~/.dotfiles_backup/
+
+# Restore a file from backup
+cp ~/.dotfiles_backup/<TIMESTAMP>/.zshrc ~/
+
+# Restore all files from a backup
+cp -r ~/.dotfiles_backup/<TIMESTAMP>/* ~/
+```
+
+To compare your current config with a backup (optional):
+
+```bash
+diff ~/.zshrc ~/.dotfiles_backup/<TIMESTAMP>/.zshrc
+```
+
 ## Scripts
 
 The repository is organized with modular, reusable scripts:
 
-| Script                         | Purpose/Features                                                                |
-| ------------------------------ | ------------------------------------------------------------------------------- |
-| `install.sh`                   | Main installation script that orchestrates the entire setup process             |
-| `scripts/create_links.sh`      | Creates symbolic links for dotfiles with automatic backup                       |
-| `scripts/cli_initial_setup.sh` | Installs and configures development tools for macOS                             |
-| `scripts/process_templates.sh` | Processes dotfile templates with values from parameters JSON file               |
-| `scripts/utilities.sh`         | Shared utility functions consisting of output, helper, and validation functions |
+| Script                               | Purpose/Features                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| `install.sh`                         | Main installation script that orchestrates the entire setup process             |
+| `scripts/create_links.sh`            | Creates symbolic links for dotfiles with automatic backup                       |
+| `scripts/cli_initial_setup.sh`       | Installs and configures development tools for macOS                             |
+| `scripts/install_additional_apps.sh` | Downloads and installs additional applications via installation files           |
+| `scripts/process_templates.sh`       | Processes dotfile templates with values from parameters JSON file               |
+| `scripts/utilities.sh`               | Shared utility functions consisting of output, helper, and validation functions |
 
 ### Utility Functions
 
@@ -289,94 +418,6 @@ The dotfiles are organized in the `dotfiles/` directory:
 | `.vimrc`        | Vim config with syntax highlighting and mouse support                       |
 | `.zprofile`     | Login shell: PATH management, tool precedence, Homebrew/SDK/Azure CLI setup |
 | `.zshrc`        | Interactive shell: prompt, completions, aliases, Copilot, NVM, dev aliases  |
-
-## Development Environment
-
-### Essential Tools
-
-| Tool               | Purpose                                     | Installation Method |
-| ------------------ | ------------------------------------------- | ------------------- |
-| Homebrew           | Package manager for macOS                   | Direct download     |
-| Git                | Version control (newer than system Git)     | Homebrew formula    |
-| GitHub CLI         | GitHub integration with Copilot extension   | Homebrew formula    |
-| Node.js            | JavaScript runtime via NVM (latest LTS)     | Homebrew NVM        |
-| .NET SDK           | Microsoft development platform (latest LTS) | Direct download     |
-| Azure CLI          | Azure cloud management                      | Homebrew formula    |
-| Visual Studio Code | Primary code editor with CLI integration    | Direct download     |
-| Fork Git client    | Advanced Git GUI with visual merge tools    | Direct download     |
-
-### Development Utilities
-
-| Utility    | Category    | Purpose                                       | Installation Method |
-| ---------- | ----------- | --------------------------------------------- | ------------------- |
-| wget       | System Tool | Download files from the web via CLI           | Homebrew formula    |
-| curl       | System Tool | Data transfer with URL syntax                 | Homebrew formula    |
-| jq         | System Tool | JSON processor for the command line           | Homebrew formula    |
-| tree       | System Tool | Directory listings in tree format             | Homebrew formula    |
-| htop       | System Tool | Interactive process viewer                    | Homebrew formula    |
-| Monaspace  | Fonts       | Coding font family for improved readability   | Homebrew cask       |
-| GPG Suite  | Security    | Key management and commit signing             | Direct download     |
-| PowerShell | Shell       | Cross-platform scripting and automation shell | Homebrew cask       |
-
-## Advanced Features
-
-### Robust Error Handling
-
-- **Strict Error Detection**: All scripts use `set -euo pipefail` for immediate error detection
-- **Graceful Degradation**: Individual component failures don't stop the entire installation
-- **User Choice**: Interactive prompts allow continuing or aborting when issues occur
-- **Failure Tracking**: Comprehensive logging of all failed operations with detailed summary
-- **Trap-based Cleanup**: Automatic cleanup of temporary files even if scripts are interrupted
-
-### Smart Installation Logic
-
-- **Idempotent Operations**: Safe to run multiple times - detects existing installations
-- **Backup Management**: Timestamped backup directories with easy restoration commands
-- **Selective Linking**: Choose which additional dotfiles to link beyond the core set
-- **Dependency Detection**: Automatic detection of required tools before attempting installation
-- **Apple Silicon Optimized**: Configured specifically for Apple Silicon Macs
-
-### PATH Management
-
-- **Duplicate Prevention**: Intelligent algorithms prevent PATH bloat from repeated runs
-- **Tool Precedence**: Ensures development tools override system versions appropriately
-- **Clean Organization**: Logical ordering from high-priority to low-priority directories
-- **Validation**: Only adds directories that actually exist on the filesystem
-
-## Customization
-
-- **Add new dotfiles:** Place your file in the `dotfiles/` directory and run `./scripts/create_links.sh` (auto-detects new files). For always-linked files, add to `CORE_DOTFILES` in `create_links.sh`.
-- **Edit configs:** Edit dotfiles in your home directory or the repo (symlinks keep them in sync). Commit and push to save changes.
-- **Shell customization:** `.zprofile` handles login shell, PATH, and env; `.zshrc` manages prompt, aliases, completions, and integrations.
-- **Tool customization:** Edit the formulas/casks arrays in `scripts/cli_initial_setup.sh` to add or remove Homebrew tools from the setup process.
-
-## Backup and Recovery
-
-### Backups
-
-- **Location**: `~/.dotfiles_backup/YYYYMMDD_HHMMSS/`
-- **Scope**: Only files that would be overwritten are backed up
-- **Preservation**: Original file permissions and timestamps maintained
-- **Organization**: Each installation run creates a separate timestamped directory
-
-### Recovery Operations
-
-```bash
-# List all available backups
-ls -la ~/.dotfiles_backup/
-
-# Restore a file from backup
-cp ~/.dotfiles_backup/<TIMESTAMP>/.zshrc ~/
-
-# Restore all files from a backup
-cp -r ~/.dotfiles_backup/<TIMESTAMP>/* ~/
-```
-
-To compare your current config with a backup (optional):
-
-```bash
-diff ~/.zshrc ~/.dotfiles_backup/<TIMESTAMP>/.zshrc
-```
 
 ## Troubleshooting
 

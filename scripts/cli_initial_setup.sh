@@ -6,10 +6,10 @@
 # Includes Homebrew, CLI tools, Node.js, .NET SDK, and GUI applications
 #
 # Usage:
-#   ./cli_initial_setup.sh                              # Non-interactive setup (default)
-#   ./cli_initial_setup.sh --interactive                # Interactive setup with prompts
-#   ./cli_initial_setup.sh --parameters file.json       # Use parameters file for additional packages
-#   DEBUG=1 ./cli_initial_setup.sh                      # Enable debug output
+#   ./cli_initial_setup.sh                           # Non-interactive setup (default)
+#   ./cli_initial_setup.sh --interactive             # Interactive setup with prompts
+#   ./cli_initial_setup.sh --parameters file.json    # Use parameters file for additional packages
+#   DEBUG=1 ./cli_initial_setup.sh                   # Enable debug output
 #
 # This script will:
 #   1. Install and configure Homebrew package manager

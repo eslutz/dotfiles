@@ -6,11 +6,11 @@
 # Creates symbolic links and optionally installs development tools
 #
 # Usage:
-#   ./install.sh                              # Non-interactive installation (default)
-#   ./install.sh --interactive                # Interactive installation with prompts
-#   ./install.sh -p parameters.json           # Use parameters file (non-interactive)
-#   ./install.sh --interactive -p parameters.json  # Interactive with parameters
-#   DEBUG=1 ./install.sh                      # Enable debug output
+#   ./install.sh                                     # Non-interactive installation (default)
+#   ./install.sh --interactive                       # Interactive installation with prompts
+#   ./install.sh -p parameters.json                  # Use parameters file (non-interactive)
+#   ./install.sh --interactive -p parameters.json    # Interactive with parameters
+#   DEBUG=1 ./install.sh                             # Enable debug output
 #
 # This script will:
 #   1. Create symbolic links for dotfiles
@@ -257,35 +257,6 @@ show_summary() {
 # INSTALLATION FUNCTIONS
 # =============================================================================
 
-# Set up symbolic links for dotfiles by calling create_links.sh
-# Usage: setup_symbolic_links
-# Returns: 0 on success, 1 on failure
-setup_symbolic_links() {
-  subsection "Setting up symbolic links for dotfiles"
-
-  if confirm "Create symbolic links for dotfiles in your home directory?" "Y"; then
-    local cmd="$DOTFILES_DIR/scripts/create_links.sh"
-
-    # Pass parameters file if provided
-    if [[ -n "$PARAMETERS_FILE" ]]; then
-      cmd="$cmd --parameters '$PARAMETERS_FILE'"
-    fi
-
-    if ! eval "$cmd"; then
-      error "Failed to set up symbolic links"
-      FAILURES+=("Symbolic link setup failed")
-      return 1
-    else
-      success "Symbolic links set up successfully!"
-      return 0
-    fi
-  else
-    info "Skipping symbolic link creation"
-    info "You can create the symbolic links later with: $DOTFILES_DIR/scripts/create_links.sh"
-    return 0
-  fi
-}
-
 # Set up macOS development environment by calling cli_initial_setup.sh
 # Usage: setup_macos_environment
 # Returns: 0 on success, 1 on failure
@@ -315,6 +286,76 @@ setup_macos_environment() {
   fi
 }
 
+# Set up symbolic links for dotfiles by calling create_links.sh
+# Usage: setup_symbolic_links
+# Returns: 0 on success, 1 on failure
+setup_symbolic_links() {
+  subsection "Setting up symbolic links for dotfiles"
+
+  if confirm "Create symbolic links for dotfiles in your home directory?" "Y"; then
+    local cmd="$DOTFILES_DIR/scripts/create_links.sh"
+
+    # Pass parameters file if provided
+    if [[ -n "$PARAMETERS_FILE" ]]; then
+      cmd="$cmd --parameters '$PARAMETERS_FILE'"
+    fi
+
+    if ! eval "$cmd"; then
+      error "Failed to set up symbolic links"
+      FAILURES+=("Symbolic link setup failed")
+      return 1
+    else
+      success "Symbolic links set up successfully!"
+      return 0
+    fi
+  else
+    info "Skipping symbolic link creation"
+    info "You can create the symbolic links later with: $DOTFILES_DIR/scripts/create_links.sh"
+    return 0
+  fi
+}
+
+# Set up additional apps installation by calling install_additional_apps.sh
+# Usage: setup_additional_apps
+# Returns: 0 on success, 1 on failure
+setup_additional_apps() {
+  subsection "Installing additional applications"
+
+  # Check if we should install additional apps based on parameters file
+  local should_install=false
+
+  if [[ -n "$PARAMETERS_FILE" && -f "$PARAMETERS_FILE" ]]; then
+    if command_exists jq; then
+      should_install=$(jq -r '.installAdditionalApps // false' "$PARAMETERS_FILE" 2>/dev/null)
+      if [[ "$should_install" == "true" ]]; then
+        info "Additional apps installation enabled in parameters file"
+      fi
+    fi
+  fi
+
+  # If not enabled via parameters, ask interactively only in interactive mode (default is Yes)
+  if [[ "$should_install" == "false" && "$NON_INTERACTIVE" == "false" ]]; then
+    if confirm "Install additional applications?" "Y"; then
+      should_install=true
+    fi
+  fi
+
+  if [[ "$should_install" == "true" ]]; then
+    if ! "$DOTFILES_DIR/scripts/install_additional_apps.sh"; then
+      error "Failed to install additional applications"
+      FAILURES+=("Additional apps installation failed")
+      return 1
+    else
+      success "Additional applications installed successfully!"
+      return 0
+    fi
+  else
+    info "Skipping additional apps installation"
+    info "You can install additional apps later with: $DOTFILES_DIR/scripts/install_additional_apps.sh"
+    return 0
+  fi
+}
+
 # =============================================================================
 # MAIN INSTALLATION PROCESS
 # =============================================================================
@@ -340,6 +381,9 @@ main() {
 
   # Set up symbolic links (now that jq is available for template processing)
   setup_symbolic_links
+
+  # Install additional applications
+  setup_additional_apps
 }
 
 # =============================================================================
