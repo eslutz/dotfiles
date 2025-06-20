@@ -6,11 +6,11 @@
 # Creates symbolic links and optionally installs development tools
 #
 # Usage:
-#   ./install.sh                                     # Non-interactive installation (default)
-#   ./install.sh --interactive                       # Interactive installation with prompts
-#   ./install.sh -p parameters.json                  # Use parameters file (non-interactive)
-#   ./install.sh --interactive -p parameters.json    # Interactive with parameters
-#   DEBUG=1 ./install.sh                             # Enable debug output
+#   ./install.sh                                               # Non-interactive installation (default)
+#   ./install.sh --interactive                                 # Interactive installation with prompts
+#   ./install.sh --parameters parameters.json                  # Use parameters file (non-interactive)
+#   ./install.sh --interactive --parameters parameters.json    # Interactive with parameters
+#   DEBUG=1 ./install.sh                                       # Enable debug output
 #
 # This script will:
 #   1. Create symbolic links for dotfiles
@@ -48,24 +48,9 @@ source "${DOTFILES_DIR}/scripts/utilities.sh"
 # =============================================================================
 
 # Display usage information and available options
-# Usage: usage
-# Returns: always 0
 usage() {
-  cat <<EOF
-Usage: $0 [OPTIONS]
-
-OPTIONS:
-    -i, --interactive        Run interactively (prompt for confirmations)
-    -p, --parameters         Path to parameters JSON file
-    -h, --help               Show this help message
-
-EXAMPLES:
-    $0                              # Non-interactive installation (default)
-    $0 --interactive                # Interactive installation with prompts
-    $0 -p parameters.json           # Use parameters file (non-interactive)
-    $0 --interactive -p parameters.json  # Interactive with parameters
-
-EOF
+  grep '^#' "$0" | cut -c 3-
+  exit 0
 }
 
 # Normalize long options into short options
@@ -211,8 +196,10 @@ validate_directory "$DOTFILES_DIR" "Dotfiles directory" || {
   exit 1
 }
 
-# Set up exit trap
-trap show_summary EXIT
+# Set up cancel flag and traps
+__USER_CANCELED=0
+trap 'echo; error "Setup canceled by user."; __USER_CANCELED=1; exit 130' INT TERM
+trap '[ "$__USER_CANCELED" -eq 0 ] && show_summary' EXIT
 
 # =============================================================================
 # SUMMARY FUNCTIONS
@@ -257,19 +244,12 @@ show_summary() {
 # INSTALLATION FUNCTIONS
 # =============================================================================
 
-# Set up macOS development environment by calling cli_initial_setup.sh
-# Usage: setup_macos_environment
+# Set up CLI tools and macOS development environment by calling cli_initial_setup.sh
+# Usage: setup_cli_tools
 # Returns: 0 on success, 1 on failure
-setup_macos_environment() {
-  subsection "Setting up macOS environment"
-
+setup_cli_tools() {
   if confirm "Install CLI tools and apps for macOS?" "Y"; then
     local cmd="$DOTFILES_DIR/scripts/cli_initial_setup.sh"
-
-    # Pass parameters file if provided
-    if [[ -n "$PARAMETERS_FILE" ]]; then
-      cmd="$cmd --parameters '$PARAMETERS_FILE'"
-    fi
 
     if ! eval "$cmd"; then
       # The CLI setup script already reported specific failures
@@ -290,8 +270,6 @@ setup_macos_environment() {
 # Usage: setup_symbolic_links
 # Returns: 0 on success, 1 on failure
 setup_symbolic_links() {
-  subsection "Setting up symbolic links for dotfiles"
-
   if confirm "Create symbolic links for dotfiles in your home directory?" "Y"; then
     local cmd="$DOTFILES_DIR/scripts/create_links.sh"
 
@@ -315,12 +293,10 @@ setup_symbolic_links() {
   fi
 }
 
-# Set up additional apps installation by calling install_additional_apps.sh
+# Set up additional apps installation by calling install_applications.sh
 # Usage: setup_additional_apps
 # Returns: 0 on success, 1 on failure
 setup_additional_apps() {
-  subsection "Installing additional applications"
-
   # Check if we should install additional apps based on parameters file
   local should_install=false
 
@@ -341,7 +317,11 @@ setup_additional_apps() {
   fi
 
   if [[ "$should_install" == "true" ]]; then
-    if ! "$DOTFILES_DIR/scripts/install_additional_apps.sh"; then
+    local cmd="$DOTFILES_DIR/scripts/install_applications.sh"
+    if [[ -n "$PARAMETERS_FILE" ]]; then
+      cmd="$cmd --parameters '$PARAMETERS_FILE'"
+    fi
+    if ! eval "$cmd"; then
       error "Failed to install additional applications"
       FAILURES+=("Additional apps installation failed")
       return 1
@@ -351,7 +331,7 @@ setup_additional_apps() {
     fi
   else
     info "Skipping additional apps installation"
-    info "You can install additional apps later with: $DOTFILES_DIR/scripts/install_additional_apps.sh"
+    info "You can install additional apps later with: $DOTFILES_DIR/scripts/install_applications.sh"
     return 0
   fi
 }
@@ -376,10 +356,10 @@ main() {
   fi
   success "System requirements validated"
 
-  # macOS-specific setup (installs Homebrew and essential tools including jq)
-  setup_macos_environment
+  # CLI tools and macOS-specific setup
+  setup_cli_tools
 
-  # Set up symbolic links (now that jq is available for template processing)
+  # Set up symbolic links
   setup_symbolic_links
 
   # Install additional applications

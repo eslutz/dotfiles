@@ -225,12 +225,6 @@ validate_system_requirements() {
       error "This configuration targets Apple Silicon Macs"
       requirements_met=false
     fi
-
-    # Check for Xcode Command Line Tools
-    if ! xcode-select -p &>/dev/null; then
-      warn "Xcode Command Line Tools not found"
-      info "You may need to install them with: xcode-select --install"
-    fi
   else
     debug "Non-macOS environment detected: $(uname)"
     warn "Non-macOS environment detected. Some features may not work correctly"
@@ -302,4 +296,218 @@ confirm() {
   fi
 
   [[ "$response" =~ ^[Yy]$ ]]
+}
+
+# =============================================================================
+# HOMEBREW PACKAGE INSTALLATION FUNCTIONS
+# =============================================================================
+
+# Install Homebrew packages (formulas and casks) from provided arrays
+# Usage: install_homebrew_packages "formulas_array" "casks_array"
+# Arguments: formulas_array - array of formula packages (by reference)
+#            casks_array - array of cask packages (by reference)
+# Returns: 0 on success, 1 on failure or if Homebrew is not available
+install_homebrew_packages() {
+  # Indirectly reference arrays passed by name using eval
+  local formulas_array_name="$1"
+  local casks_array_name="$2"
+  eval "local formulas=(\"\${${formulas_array_name}[@]}\")"
+  eval "local casks=(\"\${${casks_array_name}[@]}\")"
+
+  info "Installing ${#formulas[@]} formula(s) and ${#casks[@]} cask(s)..."
+
+  if ! command_exists brew; then
+    warn "Homebrew is not available, skipping package installation"
+    return 1
+  fi
+
+  local package_failed=false
+  local failed_packages=()
+
+  # Install formulas
+  if [[ ${#formulas[@]} -gt 0 ]]; then
+    for package in "${formulas[@]}"; do
+      info "Installing $package (formula)..."
+      if brew list "$package" &>/dev/null; then
+        info "$package already installed"
+        continue
+      fi
+      if brew install "$package"; then
+        success "$package installed successfully"
+      else
+        warn "Failed to install $package"
+        failed_packages+=("$package")
+        package_failed=true
+      fi
+    done
+  fi
+
+  # Install casks
+  if [[ ${#casks[@]} -gt 0 ]]; then
+    for package in "${casks[@]}"; do
+      info "Installing $package (cask)..."
+      if brew list --cask "$package" &>/dev/null; then
+        info "$package (cask) already installed"
+        continue
+      fi
+      if brew install --cask "$package"; then
+        success "$package (cask) installed successfully"
+      else
+        warn "Failed to install $package (cask)"
+        failed_packages+=("$package (cask)")
+        package_failed=true
+      fi
+    done
+  fi
+
+  if [[ ${#failed_packages[@]} -gt 0 ]]; then
+    for failed in "${failed_packages[@]}"; do
+      error "Failed: $failed"
+    done
+  fi
+
+  if [[ "$package_failed" == "true" ]]; then
+    warn "Some Homebrew packages failed to install"
+    return 1
+  fi
+
+  success "All Homebrew packages installed successfully"
+  return 0
+}
+
+# =============================================================================
+# PROCESS MONITORING FUNCTIONS
+# =============================================================================
+
+# Wait for a process to complete with animated spinner and progress display
+# Usage: wait_for_process_completion "process_name" "Display Name" [max_wait_seconds]
+# Arguments:
+#   $1 - process_name: exact process name to monitor (as shown in ps/pgrep)
+#   $2 - display_name: human-readable name for display messages
+#   $3 - max_wait: maximum wait time in seconds (optional, defaults to 1800/30min)
+# Returns: 0 when process completes, 1 on timeout or error
+wait_for_process_completion() {
+  local process_name="$1"
+  local display_name="$2"
+  local max_wait="${3:-1800}" # Default 30 minutes
+  local wait_time=0
+  local spinner_chars="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+  local spinner_index=0
+  local last_minute_shown=-1
+
+  # Validate inputs
+  validate_not_empty "$process_name" "Process name" || return 1
+  validate_not_empty "$display_name" "Display name" || return 1
+
+  info "Monitoring $display_name installation progress..."
+
+  # Give the process a moment to start if it was just launched
+  sleep 3
+
+  while pgrep -x "$process_name" >/dev/null 2>&1 || pgrep -x "Installer" >/dev/null 2>&1; do
+    if [[ $wait_time -ge $max_wait ]]; then
+      echo # Clear spinner line
+      warn "$display_name installation timed out after $((max_wait / 60)) minutes"
+      return 1
+    fi
+
+    # Show animated spinner with progress info
+    local current_minute=$((wait_time / 60))
+    local seconds_in_minute=$((wait_time % 60))
+    local spinner_char="${spinner_chars:$spinner_index:1}"
+
+    # Show progress info on minute boundaries, but keep spinner going
+    if [[ $current_minute -ne $last_minute_shown && $seconds_in_minute -eq 0 && $wait_time -gt 0 ]]; then
+      echo # Clear spinner line
+      info "Still waiting for installation... (${current_minute} minute(s) elapsed)"
+      last_minute_shown=$current_minute
+    else
+      # Show spinner animation with current status
+      local status_msg="Installing $display_name"
+      if [[ $wait_time -gt 60 ]]; then
+        status_msg="Installing $display_name (${current_minute}m ${seconds_in_minute}s)"
+      elif [[ $wait_time -gt 0 ]]; then
+        status_msg="Installing $display_name (${wait_time}s)"
+      fi
+      printf "\r\033[36m%s\033[0m %s..." "$spinner_char" "$status_msg"
+    fi
+
+    sleep 1
+    wait_time=$((wait_time + 1))
+    spinner_index=$(((spinner_index + 1) % ${#spinner_chars}))
+  done
+
+  echo # Clear spinner line
+  info "$display_name installation process completed"
+  return 0
+}
+
+# Wait for Xcode Command Line Tools installation to complete
+# Usage: wait_for_xcode_installation "tmp_file_path"
+# Arguments:
+#   $1 - tmp_file_path: path to temporary file that triggered installation
+# Returns: 0 when installation completes, 1 on timeout or cancellation
+wait_for_xcode_installation() {
+  local tmp_file="$1"
+  local max_wait=1800 # 30 minutes max wait
+  local wait_time=0
+  local spinner_chars="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+  local spinner_index=0
+  local last_minute_shown=-1
+
+  info "Waiting for Xcode Command Line Tools installation to complete..."
+  info "Please complete the installation in the dialog box that appeared."
+
+  while ! xcode-select -p &>/dev/null; do
+    if [[ $wait_time -ge $max_wait ]]; then
+      echo # Clear spinner line
+      rm -f "$tmp_file"
+      error "Xcode Command Line Tools installation timed out after 30 minutes"
+      return 1
+    fi
+
+    # Check if user canceled the installation
+    if ! pgrep -x "Install Command Line Developer Tools" >/dev/null 2>&1 &&
+      ! pgrep -x "Installer" >/dev/null 2>&1; then
+      # Only error if tools still aren't installed after processes end
+      if ! xcode-select -p &>/dev/null; then
+        echo # Clear spinner line
+        rm -f "$tmp_file"
+        error "Xcode Command Line Tools installation was canceled or failed."
+        error "Please install manually with 'xcode-select --install' and re-run this script."
+        return 1
+      fi
+    fi
+
+    # Show animated spinner with progress info
+    local current_minute=$((wait_time / 60))
+    local seconds_in_minute=$((wait_time % 60))
+    local spinner_char="${spinner_chars:$spinner_index:1}"
+
+    # Show progress info on minute boundaries, but keep spinner going
+    if [[ $current_minute -ne $last_minute_shown && $seconds_in_minute -eq 0 && $wait_time -gt 0 ]]; then
+      echo # Clear spinner line
+      info "Still waiting for installation... (${current_minute} minute(s) elapsed)"
+      last_minute_shown=$current_minute
+    else
+      # Show spinner animation with current status
+      local status_msg="Installing"
+      if [[ $wait_time -gt 60 ]]; then
+        status_msg="Installing (${current_minute}m ${seconds_in_minute}s)"
+      elif [[ $wait_time -gt 0 ]]; then
+        status_msg="Installing (${wait_time}s)"
+      fi
+      printf "\r\033[36m%s\033[0m %s..." "$spinner_char" "$status_msg"
+    fi
+
+    sleep 1 # Check every second for responsive feedback
+    wait_time=$((wait_time + 1))
+    spinner_index=$(((spinner_index + 1) % ${#spinner_chars}))
+  done
+
+  echo # Clear spinner line
+  # Clean up
+  rm -f "$tmp_file"
+  success "Xcode Command Line Tools installed successfully"
+  return 0
 }

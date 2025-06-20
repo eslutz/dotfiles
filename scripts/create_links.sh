@@ -34,21 +34,9 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/utilities.sh"
 
 # Display usage information and available options
-# Usage: usage
-# Returns: always 0
 usage() {
-  cat <<EOF
-Usage: $0 [OPTIONS]
-
-OPTIONS:
-    -p, --parameters PATH    Path to parameters JSON file for template processing
-    -h, --help              Show this help message
-
-EXAMPLES:
-    $0                      # Link dotfiles without template processing
-    $0 -p parameters.json   # Process templates first, then link dotfiles
-
-EOF
+  grep '^#' "$0" | cut -c 3-
+  exit 0
 }
 
 # Normalize long options into short options
@@ -69,7 +57,7 @@ while [[ $# -gt 0 ]]; do
     ;;
   --*)
     error "Unknown option: $1"
-    exit 1
+    usage
     ;;
   -*)
     # Handle short options (pass through)
@@ -87,12 +75,12 @@ while [[ $# -gt 0 ]]; do
       fi
     else
       error "Unknown option: $1"
-      exit 1
+      usage
     fi
     ;;
   *)
     error "Unexpected argument: $1"
-    exit 1
+    usage
     ;;
   esac
 done
@@ -115,11 +103,11 @@ while getopts "p:h" opt; do
     ;;
   \?)
     error "Invalid option: -$OPTARG"
-    exit 1
+    usage
     ;;
   :)
     error "Option -$OPTARG requires an argument"
-    exit 1
+    usage
     ;;
   esac
 done
@@ -176,8 +164,10 @@ validate_writable "$HOME" "Home directory" || {
   exit 1
 }
 
-# Set up exit trap
-trap show_summary EXIT
+# Set up cancel flag and traps
+__USER_CANCELED=0
+trap 'echo; error "Linking canceled by user."; __USER_CANCELED=1; exit 130' INT TERM
+trap '[ "$__USER_CANCELED" -eq 0 ] && show_summary' EXIT
 
 # =============================================================================
 # UTILITY FUNCTIONS
@@ -466,6 +456,7 @@ process_templates_if_needed() {
 # Returns: exits with 0 on success, 1 on failure
 main() {
   info "Starting dotfile linking process..."
+  section "Dotfile Linking Process"
   info "Source directory: $DOTFILES_DIR"
   info "Target directory: $HOME"
 

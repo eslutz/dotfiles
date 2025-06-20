@@ -73,3 +73,19 @@
 
 - Ensure compatibility with Zsh, the latest macOS, and Apple Silicon.
 - Adhere to the structure, conventions, and best practices already present.
+
+## Parameter Usage: Positional vs. Option Flags
+
+- **Scripts and CLI entry points** (user-facing):
+  - Use **option flags** (e.g., `-f`, `--file`) for flexibility and discoverability.
+  - Example:
+    ```bash
+    # Usage: ./script.sh --file myfile.txt --mode fast
+    ```
+- **Functions** (internal helpers):
+  - Use **positional parameters** for clarity and brevity.
+  - Example:
+    ```bash
+    # Usage: my_function "param1" "param2"
+    ```
+- Be consistent: Functions should match the style of other internal helpers, and scripts should match the style of other CLI entry points in this repository.

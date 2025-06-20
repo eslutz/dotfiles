@@ -1,6 +1,6 @@
 {
   "brew": {
-    "formulas": ["azure-cli", "qemu"],
+    "formulas": ["azure-cli", "ykman", "qemu"],
     "casks": ["font-monaspace"]
   },
   "editorconfig": {
@@ -31,5 +31,43 @@
   "vscode": {
     "installPath": "/Applications/Development"
   },
-  "installAdditionalApps": true
+  "installAdditionalApps": true,
+  "applications": [
+    {
+      "name": "Visual Studio Code",
+      "page_url": "",
+      "url": "https://code.visualstudio.com/sha/download?build=stable&os=darwin-universal",
+      "destination": "/Applications/Development"
+    },
+    {
+      "name": "GPG Keychain",
+      "page_url": "",
+      "url": "https://gpgtools.org/download",
+      "destination": ""
+    },
+    {
+      "name": "Fork",
+      "page_url": "https://git-fork.com",
+      "url": "https://cdn.fork.dev/mac/Fork-3.7.5.dmg",
+      "destination": ""
+    },
+    {
+      "name": "Parallels Desktop",
+      "page_url": "",
+      "url": "https://link.parallels.com/link/66dfeea0xN44",
+      "destination": ""
+    },
+    {
+      "name": "Steam",
+      "page_url": "",
+      "url": "https://cdn.fastly.steamstatic.com/client/installer/steam.dmg",
+      "destination": ""
+    },
+    {
+      "name": "GOG Galaxy",
+      "page_url": "https://www.gog.com/galaxy",
+      "url": "https://content-system.gog.com/open_link/download?path=/open/galaxy/client/galaxy_client_2.0.84.122.pkg",
+      "destination": ""
+    }
+  ]
 }
