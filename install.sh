@@ -15,8 +15,10 @@
 # This script will:
 #   1. Create symbolic links for dotfiles
 #   2. Optionally install macOS development tools
-#   3. Backup existing files before creating links
-#   4. Provide detailed feedback and error reporting
+#   3. Optionally install additional applications
+#   4. Optionally download GitHub repositories
+#   5. Backup existing files before creating links
+#   6. Provide detailed feedback and error reporting
 
 set -euo pipefail
 
@@ -317,7 +319,7 @@ setup_additional_apps() {
   fi
 
   if [[ "$should_install" == "true" ]]; then
-    local cmd="$DOTFILES_DIR/scripts/install_applications.sh"
+    local cmd="$DOTFILES_DIR/scripts/install_additional_apps.sh"
     if [[ -n "$PARAMETERS_FILE" ]]; then
       cmd="$cmd --parameters '$PARAMETERS_FILE'"
     fi
@@ -331,7 +333,50 @@ setup_additional_apps() {
     fi
   else
     info "Skipping additional apps installation"
-    info "You can install additional apps later with: $DOTFILES_DIR/scripts/install_applications.sh"
+    info "You can install additional apps later with: $DOTFILES_DIR/scripts/install_additional_apps.sh"
+    return 0
+  fi
+}
+
+# Set up GitHub repository downloads by calling download_github_repos.sh
+# Usage: setup_github_repos
+# Returns: 0 on success, 1 on failure
+setup_github_repos() {
+  # Check if we should download GitHub repos based on parameters file
+  local should_download=false
+
+  if [[ -n "$PARAMETERS_FILE" && -f "$PARAMETERS_FILE" ]]; then
+    if command_exists jq; then
+      should_download=$(jq -r '.downloadGithubRepos // false' "$PARAMETERS_FILE" 2>/dev/null)
+      if [[ "$should_download" == "true" ]]; then
+        info "GitHub repository download enabled in parameters file"
+      fi
+    fi
+  fi
+
+  # If not enabled via parameters, ask interactively only in interactive mode (default is No)
+  if [[ "$should_download" == "false" && "$NON_INTERACTIVE" == "false" ]]; then
+    if confirm "Download GitHub repositories for a user?" "N"; then
+      should_download=true
+    fi
+  fi
+
+  if [[ "$should_download" == "true" ]]; then
+    local cmd="$DOTFILES_DIR/scripts/download_github_repos.sh"
+    if [[ -n "$PARAMETERS_FILE" ]]; then
+      cmd="$cmd --parameters '$PARAMETERS_FILE'"
+    fi
+    if ! eval "$cmd"; then
+      error "Failed to download GitHub repositories"
+      FAILURES+=("GitHub repository download failed")
+      return 1
+    else
+      success "GitHub repositories downloaded successfully!"
+      return 0
+    fi
+  else
+    info "Skipping GitHub repository download"
+    info "You can download GitHub repos later with: $DOTFILES_DIR/scripts/download_github_repos.sh"
     return 0
   fi
 }
@@ -361,6 +406,9 @@ main() {
 
   # Set up symbolic links
   setup_symbolic_links
+
+  # Download GitHub repositories
+  setup_github_repos
 
   # Install additional applications
   setup_additional_apps
