@@ -46,6 +46,12 @@
       "destination": ""
     },
     {
+      "name": "Yubico Authenticator",
+      "page_url": "",
+      "url": "https://developers.yubico.com/yubioath-flutter/Releases/yubico-authenticator-latest-mac.dmg",
+      "destination": ""
+    },
+    {
       "name": "Fork",
       "page_url": "https://git-fork.com",
       "url": "https://cdn.fork.dev/mac/Fork-3.7.5.dmg",
@@ -69,5 +75,11 @@
       "url": "https://content-system.gog.com/open_link/download?path=/open/galaxy/client/galaxy_client_2.0.84.122.pkg",
       "destination": ""
     }
-  ]
+  ],
+  "downloadGithubRepos": true,
+  "github": {
+    "username": "eslutz",
+    "downloadDirectory": "~/Development/github-repos",
+    "includePrivateRepos": true
+  }
 }
