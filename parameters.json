@@ -64,6 +64,12 @@
       "destination": ""
     },
     {
+      "name": "UTM",
+      "page_url": "",
+      "url": "https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg",
+      "destination": ""
+    },
+    {
       "name": "Steam",
       "page_url": "",
       "url": "https://cdn.fastly.steamstatic.com/client/installer/steam.dmg",
