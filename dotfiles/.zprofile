@@ -52,7 +52,7 @@ path_prepend "/usr/local/bin"
 
 # .NET SDK and Tools
 # Only set this if it's not already in the environment
-if [[ -d "$HOME/.dotnet" && -z "${DOTNET_ROOT:-}" ]]; then
+if [[ -x "$HOME/.dotnet/dotnet" && -z "${DOTNET_ROOT:-}" ]]; then
   export DOTNET_ROOT="$HOME/.dotnet"
 fi
 [[ -n "${DOTNET_ROOT:-}" ]] && path_append "$DOTNET_ROOT"
@@ -66,34 +66,19 @@ path_append "$HOME/.dotnet/tools"
 # GPG Suite
 path_append "/usr/local/MacGPG2/bin"
 
-# =============================================================================
-# STANDARD SYSTEM PATHS
-# =============================================================================
-# Core system paths - these should come before Apple-specific paths
-
-path_append "/usr/bin"
-path_append "/bin"
-path_append "/usr/sbin"
-path_append "/sbin"
-
-# =============================================================================
-# APPLE SYSTEM PATHS
-# =============================================================================
-# These have lowest priority
-
-# Apple system paths (lowest priority)
-path_append "/System/Cryptexes/App/usr/bin"
-path_append "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-path_append "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-path_append "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-path_append "/Library/Apple/usr/bin"
+# macOS /etc/zprofile runs path_helper before this file and supplies system/Apple paths.
+# Keep those inherited paths rather than hard-coding version-specific Cryptex locations.
 
 # Added by OrbStack: command-line tools and integration
 # This won't be added again if you remove it.
-source ~/.orbstack/shell/init.zsh 2>/dev/null || :
+if [[ -r "$HOME/.orbstack/shell/init.zsh" ]]; then
+  source "$HOME/.orbstack/shell/init.zsh"
+fi
 
 
 # Prefer Homebrew Git, even if its directory was inherited later in PATH.
 if [[ -n "${HOMEBREW_PREFIX:-}" && -x "$HOMEBREW_PREFIX/opt/git/bin/git" ]]; then
   path=("$HOMEBREW_PREFIX/opt/git/bin" ${path:#$HOMEBREW_PREFIX/opt/git/bin})
 fi
+
+if [[ -r "$HOME/.zprofile.local" ]]; then source "$HOME/.zprofile.local"; fi

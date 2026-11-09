@@ -37,3 +37,7 @@ set wrapscan                    " Wrap searches around end of file - more intuit
 " Modern conveniences
 set mouse=a                     " Enable mouse support
 set clipboard=unnamed           " Clipboard integration
+
+if !isdirectory(expand("~/.vim/undodir"))
+  call mkdir(expand("~/.vim/undodir"), "p", 0700)
+endif

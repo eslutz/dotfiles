@@ -15,17 +15,19 @@ export HOMEBREW_NO_ANALYTICS=1          # Disable Homebrew analytics
 export HOMEBREW_NO_INSECURE_REDIRECT=1  # Prevent insecure redirects
 
 # GPG configuration for signing
-export GPG_TTY=$(tty)
+[[ -t 0 ]] && export GPG_TTY="$(tty)"
 
 # Cache the Homebrew prefix for tool initialization.
-if (( $+commands[brew] )); then
+if [[ -n "${HOMEBREW_PREFIX:-}" ]]; then
+  _zshrc_brew_prefix="$HOMEBREW_PREFIX"
+elif (( $+commands[brew] )); then
   _zshrc_brew_prefix="$(brew --prefix)"
 else
   _zshrc_brew_prefix=""
 fi
 
 # Node Version Manager (NVM) setup
-export NVM_DIR="$HOME/.nvm"
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 [ -s "${_zshrc_brew_prefix}/opt/nvm/nvm.sh" ] && . "${_zshrc_brew_prefix}/opt/nvm/nvm.sh"
 
 # =============================================================================
@@ -39,12 +41,16 @@ typeset -U fpath
 # Set up completion directories from Homebrew before initializing the completion system
 if [[ -n "$_zshrc_brew_prefix" ]]; then
   _zshrc_completion_dir="$_zshrc_brew_prefix/share/zsh/site-functions"
-  (( ${fpath[(Ie)$_zshrc_completion_dir]} )) || fpath=("$_zshrc_completion_dir" $fpath)
+  if [[ -d "$_zshrc_completion_dir" ]]; then
+    fpath=("$_zshrc_completion_dir" $fpath)
+  fi
 fi
 
 # Add tool completion directories before initializing Zsh completions.
 for _zshrc_completion_dir in "$HOME/.docker/completions" "$HOME/.hzdb/completions"; do
-  (( ${fpath[(Ie)$_zshrc_completion_dir]} )) || fpath=("$_zshrc_completion_dir" $fpath)
+  if [[ -d "$_zshrc_completion_dir" ]]; then
+    fpath=("$_zshrc_completion_dir" $fpath)
+  fi
 done
 unset _zshrc_completion_dir
 autoload -Uz compinit
@@ -58,7 +64,7 @@ autoload bashcompinit && bashcompinit
 [ -s "${_zshrc_brew_prefix}/opt/nvm/etc/bash_completion.d/nvm" ] && . "${_zshrc_brew_prefix}/opt/nvm/etc/bash_completion.d/nvm"
 
 # Azure CLI completions
-if [ -f "${_zshrc_brew_prefix}/etc/bash_completion.d/az" ]; then
+if [[ -f "${_zshrc_brew_prefix}/etc/bash_completion.d/az" && -z "${_comps[az]:-}" ]]; then
   source "${_zshrc_brew_prefix}/etc/bash_completion.d/az"
 fi
 
@@ -68,16 +74,15 @@ unset _zshrc_brew_prefix
 # Custom completion function for dotnet command with fallback to file completion
 if command -v dotnet &>/dev/null; then
   _dotnet_zsh_complete() {
-    # Get completions from dotnet complete command based on current word list
-    local completions=("$(dotnet complete "$words")")
-    # If no completions available, fall back to filename completion
-    # This ensures tab completion always works even when dotnet can't provide suggestions
-    if [ -z "$completions" ]; then
-      _arguments '*::arguments: _normal'
-      return
+    local output
+    local -a completions
+    output=$(dotnet complete --position "$CURSOR" "$BUFFER" 2>/dev/null) || output=''
+    completions=("${(@f)output}")
+    if [[ -n "$output" ]]; then
+      compadd -- "${completions[@]}"
+    else
+      _files
     fi
-    # Parse completions (newline-separated) and present as completion values
-    _values = "${(ps:\n:)completions}"
   }
   # Register the completion function for the dotnet command
   compdef _dotnet_zsh_complete dotnet
@@ -101,7 +106,8 @@ alias npmupdatemajor="npx npm-check-updates -u"
 # vcs_info is Zsh's built-in version control system integration
 autoload -Uz vcs_info
 # Run vcs_info before each prompt display to get current Git status
-precmd() { vcs_info }
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd vcs_info
 # Configure vcs_info to show Git branch in cyan color with parentheses
 # %b expands to the current branch name
 zstyle ':vcs_info:git:*' formats '%F{cyan}(%b)%f'
@@ -117,8 +123,8 @@ PROMPT='%n@%m %1~${vcs_info_msg_0_} > '
 # TOOL INTEGRATIONS
 # =============================================================================
 
-alias claude="/Users/ericslutz/.claude/local/claude"
-alias bash5='/opt/homebrew/bin/bash'
+[[ -x "$HOME/.claude/local/claude" ]] && alias claude="\"$HOME/.claude/local/claude\""
+[[ -x /opt/homebrew/bin/bash ]] && alias bash5='/opt/homebrew/bin/bash'
 
 
 # Enable command timestamps
@@ -137,7 +143,7 @@ export AZURE_CLI_POLARIS_CONFIG_DIR="$HOME/.config/azure-cli-profiles/polaris"
 export AZURE_CONFIG_DIR="${AZURE_CONFIG_DIR:-$AZURE_CLI_PERSONAL_CONFIG_DIR}"
 
 azuse() {
-  case "$1" in
+  case "${1:-}" in
     personal)
       export AZURE_CONFIG_DIR="$AZURE_CLI_PERSONAL_CONFIG_DIR"
       print "Azure CLI profile: personal ($AZURE_CONFIG_DIR)"
@@ -205,7 +211,9 @@ if command -v direnv >/dev/null 2>&1 && ! typeset -f _direnv_hook >/dev/null 2>&
 fi
 
 # Unity CLI
-. "/Users/ericslutz/.unity/env"
+[[ -r "$HOME/.unity/env" ]] && . "$HOME/.unity/env"
 
 # Google Cloud CLI: discard stale inherited Python overrides; Homebrew manages its virtual environment.
 unset CLOUDSDK_PYTHON
+
+if [[ -r "$HOME/.zshrc.local" ]]; then source "$HOME/.zshrc.local"; fi
