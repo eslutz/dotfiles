@@ -5,14 +5,15 @@
 - This repository configures macOS developer environments, targeting Apple Silicon and modern macOS versions.
 - Zsh is the default shell (`.zshrc`, `.zprofile`).
 - The main setup script is `install.sh`, which uses strict error handling, and orchestrates setup through modular scripts in `scripts/`.
-- Supports template-based configuration using `templates/` directory and `parameters.json` for personalized dotfile generation.
+- Tracked dotfiles are canonical; never generate or rewrite them during setup.
+- Brewfile defines core packages; Brewfile.extras is explicit opt-in. parameters.json only configures repository downloads.
 
 ## Coding Conventions
 
 - Follow the style of existing scripts:
   - Use `set -euo pipefail`.
-  - Prefer POSIX-compliant shell code unless macOS-specific features are needed.
-  - Use existing color-coded output functions and timestamped backups.
+  - Use macOS system Bash 3.2 for scripts and Zsh for interactive configuration.
+  - Use explicit phase summaries and unique per-run backups.
   - Write modular scripts and use functions for repeated logic.
   - Decompose complex operations into focused, single-purpose functions.
   - Validate user input and check command existence before use.
