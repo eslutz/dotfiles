@@ -1,422 +1,147 @@
-#!/usr/bin/env bash
-# =============================================================================
-# Dotfiles Installation Script
-# =============================================================================
-# Main installation script that sets up the complete development environment
-# Creates symbolic links and optionally installs development tools
-#
-# Usage:
-#   ./install.sh                                               # Non-interactive installation (default)
-#   ./install.sh --interactive                                 # Interactive installation with prompts
-#   ./install.sh --parameters parameters.json                  # Use parameters file (non-interactive)
-#   ./install.sh --interactive --parameters parameters.json    # Interactive with parameters
-#   DEBUG=1 ./install.sh                                       # Enable debug output
-#
-# This script will:
-#   1. Create symbolic links for dotfiles
-#   2. Optionally install macOS development tools
-#   3. Optionally install additional applications
-#   4. Optionally download GitHub repositories
-#   5. Backup existing files before creating links
-#   6. Provide detailed feedback and error reporting
-
+#!/bin/bash
+# Personal Apple Silicon bootstrap. Use --dry-run to inspect without changing state.
 set -euo pipefail
-
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
-
-# Get the directory where this script is located
-# shellcheck disable=SC2155
-readonly DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Initialize failures array to track setup issues
-declare -a FAILURES=()
-
-# Script options
-NON_INTERACTIVE=true # Non-interactive is the default
-PARAMETERS_FILE=""
-
-# =============================================================================
-# INITIALIZATION
-# =============================================================================
-
-# Source shared utilities (output formatting and helper functions)
-# shellcheck disable=SC1091
-source "${DOTFILES_DIR}/scripts/utilities.sh"
-
-# =============================================================================
-# OPTION PARSING
-# =============================================================================
-
-# Display usage information and available options
+root=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=scripts/utilities.sh
+source "$root/scripts/utilities.sh"
+extras=false repos=false links_only=false dry=false interactive=false explicit_parameters=false
+parameters="$root/parameters.json"
 usage() {
-  grep '^#' "$0" | cut -c 3-
+  echo 'Usage: ./install.sh [--extras] [--repos] [--links-only] [--dry-run] [--interactive] [--parameters FILE]'
+}
+while (($#)); do
+  case "$1" in
+    --extras) extras=true;;
+    --repos) repos=true;;
+    --links-only) links_only=true;;
+    --dry-run) dry=true;;
+    --interactive|-i) interactive=true;;
+    --parameters|-p)
+      [[ $# -ge 2 && "$2" != -* ]] || { echo 'Missing parameters file' >&2; exit 2; }
+      parameters=$2; explicit_parameters=true; shift;;
+    --help|-h) usage; exit 0;;
+    *) echo "Unknown argument: $1" >&2; usage >&2; exit 2;;
+  esac
+  shift
+done
+if $links_only && { $extras || $repos; }; then echo '--links-only cannot select extras or repos' >&2; exit 2; fi
+if $explicit_parameters || $repos; then
+  [[ -f "$parameters" ]] || { echo "Parameters file not found: $parameters" >&2; exit 2; }
+  if command -v jq >/dev/null; then validate_parameters "$parameters"; fi
+fi
+if $dry; then
+  if ! $links_only; then
+    echo 'Would check Apple Silicon macOS and Command Line Tools; initialize/install Homebrew (installation requires --interactive).'
+    echo 'Would check/install core Brewfile with --no-upgrade; ensure missing Node LTS and .NET LTS runtimes.'
+  fi
+  "$root/scripts/create_links.sh" --dry-run
+  $extras && echo 'Would check/install Brewfile.extras with --no-upgrade; preserve existing VS Code locations.'
+  $repos && echo "Would validate $parameters, authenticate only with --interactive, enumerate and clone missing repositories."
+  echo 'Dry run complete; no network requests or mutations.'
   exit 0
-}
-
-# Normalize long options into short options
-NORMALIZED_ARGS=()
-while [[ $# -gt 0 ]]; do
-  case $1 in
-  --interactive)
-    NORMALIZED_ARGS+=("-i")
-    shift
-    ;;
-  --parameters)
-    if [[ $# -lt 2 || "$2" == -* ]]; then
-      error "Option --parameters requires an argument"
-      exit 1
-    fi
-    NORMALIZED_ARGS+=("-p" "$2")
-    shift 2
-    ;;
-  --help)
-    NORMALIZED_ARGS+=("-h")
-    shift
-    ;;
-  --*)
-    error "Unknown option: $1"
-    usage
-    exit 1
-    ;;
-  -*)
-    # Handle short options (pass through)
-    if [[ "$1" =~ ^-[iph]$ ]]; then
-      if [[ "$1" == "-p" ]]; then
-        if [[ $# -lt 2 || "$2" == -* ]]; then
-          error "Option -p requires an argument"
-          exit 1
-        fi
-        NORMALIZED_ARGS+=("$1" "$2")
-        shift 2
-      else
-        NORMALIZED_ARGS+=("$1")
-        shift
-      fi
-    else
-      error "Unknown option: $1"
-      usage
-      exit 1
-    fi
-    ;;
-  *)
-    error "Unexpected argument: $1"
-    usage
-    exit 1
-    ;;
-  esac
-done
-
-# Reset the positional parameters to the normalized arguments
-if [[ ${#NORMALIZED_ARGS[@]} -gt 0 ]]; then
-  set -- "${NORMALIZED_ARGS[@]}"
-else
-  set --
 fi
-
-# Parse command line arguments with getopts
-OPTIND=1 # Reset the option index
-while getopts "ip:h" opt; do
-  case $opt in
-  i) NON_INTERACTIVE=false ;;
-  p) PARAMETERS_FILE="$OPTARG" ;;
-  h)
-    usage
-    exit 0
-    ;;
-  \?)
-    error "Invalid option: -$OPTARG"
-    usage
-    exit 1
-    ;;
-  :)
-    error "Option -$OPTARG requires an argument"
-    usage
-    exit 1
-    ;;
-  esac
-done
-
-# Export these for child scripts
-export NON_INTERACTIVE
-export PARAMETERS_FILE
-
-# =============================================================================
-# INITIALIZATION AND CONFIGURATION
-# =============================================================================
-
-# Override confirm function for non-interactive mode
-if [[ "$NON_INTERACTIVE" == "true" ]]; then
-  # Override with auto-accept version for non-interactive mode
-  # Usage: confirm "prompt text" "default_option"
-  # Arguments: prompt - question text, default - Y or N default choice
-  # Returns: 0 if default is Y, 1 if default is N
-  confirm() {
-    local prompt="$1"
-    local default="${2:-Y}"
-
-    if [[ "$default" =~ ^[Yy]$ ]]; then
-      info "$prompt [Y/n] Y (auto-accepted)"
-      return 0
-    else
-      info "$prompt [y/N] N (auto-declined)"
-      return 1
-    fi
-  }
-fi
-
-# Validate parameters file if provided
-if [[ -n "$PARAMETERS_FILE" ]]; then
-  if [[ ! -f "$PARAMETERS_FILE" ]]; then
-    error "Parameters file not found: $PARAMETERS_FILE"
-    exit 1
-  fi
-
-  # Validate JSON syntax
-  if ! command_exists jq; then
-    warn "jq not installed. Cannot validate parameters file syntax."
-    warn "Parameters file will be passed to child scripts for processing."
-  else
-    if ! jq empty "$PARAMETERS_FILE" 2>/dev/null; then
-      error "Invalid JSON in parameters file: $PARAMETERS_FILE"
-      exit 1
-    fi
-    info "Parameters file validated: $PARAMETERS_FILE"
-  fi
-fi
-
-# Validate we're not running as root
-validate_not_root || {
-  error "This script must be run as a regular user, not root"
-  exit 1
+[[ $(uname -s) == Darwin && $(uname -m) == arm64 ]] || { echo 'Apple Silicon macOS required' >&2; exit 1; }
+[[ $EUID -ne 0 ]] || { echo 'Run as your regular user, not root.' >&2; exit 1; }
+phases=(prerequisites core parameters runtimes links extras repositories)
+states=(blocked blocked skipped blocked blocked skipped skipped)
+if $links_only; then states[0]=skipped; states[1]=skipped; states[3]=skipped; fi
+if $explicit_parameters || $repos; then states[2]=blocked; fi
+$extras && states[5]=blocked
+$repos && states[6]=blocked
+# Homebrew sudo uses askpass when set; fail instead of prompting unless explicitly interactive.
+if ! $interactive; then export SUDO_ASKPASS=/usr/bin/false NONINTERACTIVE=1; fi
+current=-1 runtime_tmp=''
+finish() {
+  local status=$? i
+  trap - EXIT
+  [[ -z "$runtime_tmp" ]] || rm -rf "$runtime_tmp"
+  if ((current >= 0)) && [[ ${states[current]} == running ]]; then states[current]=failed; fi
+  echo 'Setup summary:'
+  for ((i=0; i<${#phases[@]}; i++)); do printf '  %s: %s\n' "${phases[$i]}" "${states[$i]}"; done
+  exit "$status"
 }
-
-# Validate dotfiles directory exists and is readable
-validate_directory "$DOTFILES_DIR" "Dotfiles directory" || {
-  error "Cannot access dotfiles directory: $DOTFILES_DIR"
-  exit 1
+trap finish EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+phase() {
+  current=$1; shift
+  states[current]=running
+  "$@"
+  states[current]=completed
 }
-
-# Set up cancel flag and traps
-__USER_CANCELED=0
-trap 'echo; error "Setup canceled by user."; __USER_CANCELED=1; exit 130' INT TERM
-trap '[ "$__USER_CANCELED" -eq 0 ] && show_summary' EXIT
-
-# =============================================================================
-# SUMMARY FUNCTIONS
-# =============================================================================
-
-# Display installation summary with backup information and failure details
-# Usage: show_summary
-# Returns: 0 if no failures, 1 if there were failures
-show_summary() {
-  section "Dotfiles Installation Complete"
-
-  # Show backup info if present
-  local backup_dir_base="$HOME/.dotfiles_backup"
-
-  if [[ -d "$backup_dir_base" ]]; then
-    local latest_backup
-    latest_backup=$(find "$backup_dir_base" -maxdepth 1 -type d | sort -r | head -n1)
-    if [[ -n "$latest_backup" && "$latest_backup" != "$backup_dir_base" ]]; then
-      info "Backups created at: $latest_backup"
-      info "To restore: cp -r $latest_backup/* $HOME/"
-    fi
-  fi
-
-  # Display any tracked failures if present
-  if [[ ${#FAILURES[@]} -gt 0 ]]; then
-    warn "Installation completed with ${#FAILURES[@]} issue(s):"
-    for fail in "${FAILURES[@]}"; do
-      error "  $fail"
-    done
-    echo
-    info "You can re-run ./install.sh to retry failed components"
+prerequisites() {
+  if ! xcode-select -p >/dev/null 2>&1; then
+    echo 'Install Command Line Tools with xcode-select --install, complete its dialog, then retry.' >&2
     return 1
-  else
-    success "Installation completed successfully!"
-    echo
-    info "🎉 Your development environment is ready!"
-    info "💡 Restart your terminal or run: source ~/.zshrc"
+  fi
+  export HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_AUTO_UPDATE=1
+  if [[ ! -x /opt/homebrew/bin/brew ]]; then
+    $interactive || { echo 'Install Homebrew first, or use --interactive.' >&2; return 1; }
+    runtime_tmp=$(mktemp -d)
+    curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$runtime_tmp/homebrew.sh"
+    /bin/bash "$runtime_tmp/homebrew.sh"
+    rm -rf "$runtime_tmp"; runtime_tmp=''
+  fi
+  # Homebrew emits trusted shell initialization; never eval user-supplied arguments.
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+}
+bundle() {
+  if ! brew bundle check --no-upgrade --file="$1"; then
+    brew bundle install --no-upgrade --file="$1"
+  fi
+  brew bundle check --no-upgrade --file="$1"
+}
+runtimes() {
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  mkdir -p "$NVM_DIR"
+  if ! command -v node >/dev/null; then
+    # Inspect NVM without switching versions or changing an existing default alias.
+    set +u
+    # shellcheck disable=SC1091
+    source "$HOMEBREW_PREFIX/opt/nvm/nvm.sh" --no-use
+    if [[ $(nvm version node) == N/A ]]; then nvm install --lts; fi
+    set -u
+  fi
+  if ! command -v dotnet >/dev/null && [[ ! -x "$HOME/.dotnet/dotnet" && ! -x "${DOTNET_ROOT:-/usr/local/share/dotnet}/dotnet" ]]; then
+    runtime_tmp=$(mktemp -d)
+    curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$runtime_tmp/dotnet.sh"
+    /bin/bash "$runtime_tmp/dotnet.sh" --channel LTS
+    rm -rf "$runtime_tmp"; runtime_tmp=''
   fi
 }
-
-# =============================================================================
-# INSTALLATION FUNCTIONS
-# =============================================================================
-
-# Set up CLI tools and macOS development environment by calling cli_initial_setup.sh
-# Usage: setup_cli_tools
-# Returns: 0 on success, 1 on failure
-setup_cli_tools() {
-  if confirm "Install CLI tools and apps for macOS?" "Y"; then
-    local cmd="$DOTFILES_DIR/scripts/cli_initial_setup.sh"
-
-    if ! eval "$cmd"; then
-      # The CLI setup script already reported specific failures
-      FAILURES+=("Some development tools failed to install")
-      return 1
-    else
-      success "macOS CLI setup completed successfully!"
-      return 0
-    fi
-  else
-    info "Skipping macOS-specific setup"
-    info "You can run the macOS setup later with: $DOTFILES_DIR/scripts/cli_initial_setup.sh"
-    return 0
+install_extras() {
+  local app
+  # Preserve legacy package types; migrations can require removals, which setup never does.
+  if command -v az >/dev/null && ! brew list --cask azure-cli >/dev/null 2>&1; then
+    export HOMEBREW_BUNDLE_CASK_SKIP="${HOMEBREW_BUNDLE_CASK_SKIP:+$HOMEBREW_BUNDLE_CASK_SKIP }azure-cli"
+    echo 'Preserving existing Azure CLI; cask migration is a separate manual action.'
   fi
+  if command -v pwsh >/dev/null && ! brew list --formula powershell >/dev/null 2>&1; then
+    export HOMEBREW_BUNDLE_BREW_SKIP="${HOMEBREW_BUNDLE_BREW_SKIP:+$HOMEBREW_BUNDLE_BREW_SKIP }powershell"
+    echo 'Preserving existing PowerShell; formula migration is a separate manual action.'
+  fi
+  # Avoid installing a second copy of a manually installed editor.
+  for app in '/Applications/Visual Studio Code.app' '/Applications/Development/Visual Studio Code.app' "$HOME/Applications/Visual Studio Code.app"; do
+    if [[ -d "$app" ]] && ! brew list --cask visual-studio-code >/dev/null 2>&1; then
+      export HOMEBREW_BUNDLE_CASK_SKIP="${HOMEBREW_BUNDLE_CASK_SKIP:+$HOMEBREW_BUNDLE_CASK_SKIP }visual-studio-code"
+      printf 'Preserving existing VS Code: %s\n' "$app"
+      break
+    fi
+  done
+  bundle "$root/Brewfile.extras"
 }
-
-# Set up symbolic links for dotfiles by calling create_links.sh
-# Usage: setup_symbolic_links
-# Returns: 0 on success, 1 on failure
-setup_symbolic_links() {
-  if confirm "Create symbolic links for dotfiles in your home directory?" "Y"; then
-    local cmd="$DOTFILES_DIR/scripts/create_links.sh"
-
-    # Pass parameters file if provided
-    if [[ -n "$PARAMETERS_FILE" ]]; then
-      cmd="$cmd --parameters '$PARAMETERS_FILE'"
-    fi
-
-    if ! eval "$cmd"; then
-      error "Failed to set up symbolic links"
-      FAILURES+=("Symbolic link setup failed")
-      return 1
-    else
-      success "Symbolic links set up successfully!"
-      return 0
-    fi
-  else
-    info "Skipping symbolic link creation"
-    info "You can create the symbolic links later with: $DOTFILES_DIR/scripts/create_links.sh"
-    return 0
-  fi
-}
-
-# Set up additional apps installation by calling install_applications.sh
-# Usage: setup_additional_apps
-# Returns: 0 on success, 1 on failure
-setup_additional_apps() {
-  # Check if we should install additional apps based on parameters file
-  local should_install=false
-
-  if [[ -n "$PARAMETERS_FILE" && -f "$PARAMETERS_FILE" ]]; then
-    if command_exists jq; then
-      should_install=$(jq -r '.installAdditionalApps // false' "$PARAMETERS_FILE" 2>/dev/null)
-      if [[ "$should_install" == "true" ]]; then
-        info "Additional apps installation enabled in parameters file"
-      fi
-    fi
-  fi
-
-  # If not enabled via parameters, ask interactively only in interactive mode (default is Yes)
-  if [[ "$should_install" == "false" && "$NON_INTERACTIVE" == "false" ]]; then
-    if confirm "Install additional applications?" "Y"; then
-      should_install=true
-    fi
-  fi
-
-  if [[ "$should_install" == "true" ]]; then
-    local cmd="$DOTFILES_DIR/scripts/install_additional_apps.sh"
-    if [[ -n "$PARAMETERS_FILE" ]]; then
-      cmd="$cmd --parameters '$PARAMETERS_FILE'"
-    fi
-    if ! eval "$cmd"; then
-      error "Failed to install additional applications"
-      FAILURES+=("Additional apps installation failed")
-      return 1
-    else
-      success "Additional applications installed successfully!"
-      return 0
-    fi
-  else
-    info "Skipping additional apps installation"
-    info "You can install additional apps later with: $DOTFILES_DIR/scripts/install_additional_apps.sh"
-    return 0
-  fi
-}
-
-# Set up GitHub repository downloads by calling download_github_repos.sh
-# Usage: setup_github_repos
-# Returns: 0 on success, 1 on failure
-setup_github_repos() {
-  # Check if we should download GitHub repos based on parameters file
-  local should_download=false
-
-  if [[ -n "$PARAMETERS_FILE" && -f "$PARAMETERS_FILE" ]]; then
-    if command_exists jq; then
-      should_download=$(jq -r '.downloadGithubRepos // false' "$PARAMETERS_FILE" 2>/dev/null)
-      if [[ "$should_download" == "true" ]]; then
-        info "GitHub repository download enabled in parameters file"
-      fi
-    fi
-  fi
-
-  # If not enabled via parameters, ask interactively only in interactive mode (default is No)
-  if [[ "$should_download" == "false" && "$NON_INTERACTIVE" == "false" ]]; then
-    if confirm "Download GitHub repositories for a user?" "N"; then
-      should_download=true
-    fi
-  fi
-
-  if [[ "$should_download" == "true" ]]; then
-    local cmd="$DOTFILES_DIR/scripts/download_github_repos.sh"
-    if [[ -n "$PARAMETERS_FILE" ]]; then
-      cmd="$cmd --parameters '$PARAMETERS_FILE'"
-    fi
-    if ! eval "$cmd"; then
-      error "Failed to download GitHub repositories"
-      FAILURES+=("GitHub repository download failed")
-      return 1
-    else
-      success "GitHub repositories downloaded successfully!"
-      return 0
-    fi
-  else
-    info "Skipping GitHub repository download"
-    info "You can download GitHub repos later with: $DOTFILES_DIR/scripts/download_github_repos.sh"
-    return 0
-  fi
-}
-
-# =============================================================================
-# MAIN INSTALLATION PROCESS
-# =============================================================================
-
-# Main installation function to orchestrate the complete setup process
-# Usage: main
-# Returns: exits with code based on success/failure of operations
-main() {
-  section "Welcome to Dotfiles Setup"
-  info "This script will set up your development environment"
-  info "Dotfiles location: $DOTFILES_DIR"
-
-  # Validate system requirements first
-  info "Checking system requirements..."
-  if ! validate_system_requirements; then
-    error "System requirements not met. Please address the issues above and try again."
-    exit 1
-  fi
-  success "System requirements validated"
-
-  # CLI tools and macOS-specific setup
-  setup_cli_tools
-
-  # Set up symbolic links
-  setup_symbolic_links
-
-  # Download GitHub repositories
-  setup_github_repos
-
-  # Install additional applications
-  setup_additional_apps
-}
-
-# =============================================================================
-# SCRIPT EXECUTION
-# =============================================================================
-
-# Execute main function
-main "$@"
+if ! $links_only; then
+  phase 0 prerequisites
+  phase 1 bundle "$root/Brewfile"
+fi
+if $explicit_parameters || $repos; then phase 2 validate_parameters "$parameters"; fi
+if ! $links_only; then phase 3 runtimes; fi
+phase 4 "$root/scripts/create_links.sh"
+if [[ ! -x /usr/local/bin/gpg ]]; then echo 'Signing prerequisite unavailable: /usr/local/bin/gpg (GPG Suite). Provision your signing key/YubiKey separately.' >&2; fi
+if [[ ! -r "$HOME/.config/git/ssc-atlas.gitconfig" ]]; then echo 'SSCAtlas Git override is absent; restore it before committing in that work tree.' >&2; fi
+if $extras; then phase 5 install_extras; fi
+if $repos; then
+  repo_args=(--parameters "$parameters")
+  $interactive && repo_args+=(--interactive)
+  phase 6 "$root/scripts/github_repo_downloader.sh" "${repo_args[@]}"
+fi

@@ -1,0 +1,10 @@
+# Explicit opt-in: ./install.sh --extras
+cask "azure-cli"
+brew "ykman"
+brew "bfg"
+brew "curl"
+brew "tree"
+brew "powershell"
+cask "yubico-authenticator"
+cask "font-monaspace"
+cask "visual-studio-code", args: { appdir: "/Applications/Development" }
