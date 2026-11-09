@@ -7,10 +7,6 @@
 # Existing user-specific cache
 .dccache
 
-# Xcode user state; keep shared project settings and schemes trackable
-xcuserdata/
-*.xcuserstate
-
 # Hidden Vim swap files
 .*.swp
 .*.swo

@@ -118,8 +118,8 @@ class BootstrapTests(unittest.TestCase):
         subprocess.run(['/usr/bin/git', 'init', '-q', str(checkout)], env=self.env, check=True)
         self.run_script('scripts/create_links.sh')
         ignored = ['.DS_Store', 'nested/._file', '.AppleDouble/file', '.LSOverride', '.dccache',
-                   'app.xcodeproj/xcuserdata/user/state', 'session.xcuserstate', '.file.swp', '.file.swo', '.claude/settings.local.json']
-        visible = ['.vscode/settings.json', '.idea/project.xml', '.env.example', 'bin/source.cs',
+                   '.file.swp', '.file.swo', '.claude/settings.local.json']
+        visible = ['app.xcodeproj/xcuserdata/user/state', 'session.xcuserstate', '.vscode/settings.json', '.idea/project.xml', '.env.example', 'bin/source.cs',
                    'app.xcodeproj/xcshareddata/xcschemes/App.xcscheme']
         for path in ignored + visible:
             r = subprocess.run(['/usr/bin/git', '-C', str(checkout), 'check-ignore', '--no-index', '-q', path], env=self.env)
