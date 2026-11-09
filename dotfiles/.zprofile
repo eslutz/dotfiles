@@ -8,6 +8,9 @@
 # PATH MANAGEMENT UTILITIES
 # =============================================================================
 
+# Keep inherited paths and subsequent additions unique.
+typeset -U path fpath
+
 # Append directory to PATH if it exists and isn't already present
 # Only adds directories that actually exist on the filesystem
 # Checks for duplicates using pattern matching to avoid PATH bloat
@@ -40,13 +43,6 @@ fi
 # =============================================================================
 # These tools should override system versions
 
-# Homebrew packages (highest priority)
-path_prepend "$(brew --prefix)/bin"
-path_prepend "$(brew --prefix)/sbin"
-
-# Force Homebrew Git to be first in PATH (takes precedence over standard Homebrew)
-path_prepend "$(brew --prefix)/opt/git/bin"
-
 # User-installed tools (high priority)
 path_prepend "/usr/local/bin"
 
@@ -56,14 +52,12 @@ path_prepend "/usr/local/bin"
 
 # .NET SDK and Tools
 # Only set this if it's not already in the environment
-if [[ -d "$HOME/.dotnet" && -z "${DOTNET_ROOT}" ]]; then
+if [[ -d "$HOME/.dotnet" && -z "${DOTNET_ROOT:-}" ]]; then
   export DOTNET_ROOT="$HOME/.dotnet"
-  path_append "$DOTNET_ROOT"
-  path_append "$DOTNET_ROOT/tools"
 fi
+[[ -n "${DOTNET_ROOT:-}" ]] && path_append "$DOTNET_ROOT"
+path_append "$HOME/.dotnet/tools"
 
-# Azure CLI
-path_append "$(brew --prefix)/opt/azure-cli/bin"
 
 # =============================================================================
 # OPTIONAL TOOLS
@@ -93,3 +87,13 @@ path_append "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/loc
 path_append "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
 path_append "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
 path_append "/Library/Apple/usr/bin"
+
+# Added by OrbStack: command-line tools and integration
+# This won't be added again if you remove it.
+source ~/.orbstack/shell/init.zsh 2>/dev/null || :
+
+
+# Prefer Homebrew Git, even if its directory was inherited later in PATH.
+if [[ -n "${HOMEBREW_PREFIX:-}" && -x "$HOMEBREW_PREFIX/opt/git/bin/git" ]]; then
+  path=("$HOMEBREW_PREFIX/opt/git/bin" ${path:#$HOMEBREW_PREFIX/opt/git/bin})
+fi
