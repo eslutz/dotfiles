@@ -1,3 +1,5 @@
 # User-specific files
 .DS_Store
 .dccache
+
+**/.claude/settings.local.json
