@@ -19,13 +19,15 @@ rollback() {
 trap rollback EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-names=(.editorconfig .gitconfig .gitignore .vimrc .zprofile .zshrc)
+names=(.editorconfig .gitconfig .gitignore .vimrc .zprofile .zshrc .local/bin/az-context-guard .local/bin/az-profile-init)
+sources=(dotfiles/.editorconfig dotfiles/.gitconfig dotfiles/.gitignore dotfiles/.vimrc dotfiles/.zprofile dotfiles/.zshrc scripts/az-context-guard scripts/initialize_azure_profiles.sh)
 # Validate all sources before moving any home configuration.
-for name in "${names[@]}"; do
-  [[ -f "$root/dotfiles/$name" ]] || { echo "Missing source: $name" >&2; exit 1; }
+for source in "${sources[@]}"; do
+  [[ -f "$root/$source" ]] || { echo "Missing source: $source" >&2; exit 1; }
 done
-for name in "${names[@]}"; do
-  src="$root/dotfiles/$name" dest="$HOME/$name"
+for ((i=0; i<${#names[@]}; i++)); do
+  name=${names[$i]}
+  src="$root/${sources[$i]}" dest="$HOME/$name"
   if [[ -L "$dest" && $(readlink "$dest") == "$src" ]]; then
     printf 'Unchanged: %s\n' "$dest"
     continue
@@ -38,8 +40,10 @@ for name in "${names[@]}"; do
       printf 'Backups: %s\n' "$backup"
     fi
     pending="$backup/$name"
+    mkdir -p "$(dirname "$pending")"
     mv "$dest" "$pending"
   fi
+  mkdir -p "$(dirname "$dest")"
   ln -s "$src" "$dest"
   pending=''
   printf 'Linked: %s\n' "$dest"

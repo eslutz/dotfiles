@@ -1,5 +1,19 @@
-# User-specific files
+# macOS metadata and resource forks
 .DS_Store
+._*
+.AppleDouble/
+.LSOverride
+
+# Existing user-specific cache
 .dccache
 
+# Xcode user state; keep shared project settings and schemes trackable
+xcuserdata/
+*.xcuserstate
+
+# Hidden Vim swap files
+.*.swp
+.*.swo
+
+# Machine-local Claude permissions/settings
 **/.claude/settings.local.json

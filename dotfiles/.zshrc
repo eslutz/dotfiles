@@ -202,6 +202,10 @@ azcontext() {
   fi
 }
 
+azinit() {
+  "$HOME/.local/bin/az-profile-init" "$@"
+}
+
 azguard() {
   "$HOME/.local/bin/az-context-guard" "$@"
 }

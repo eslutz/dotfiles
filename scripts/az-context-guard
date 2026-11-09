@@ -1,0 +1,34 @@
+#!/bin/bash
+# Check the current CLI context before an operation; never switch clouds/accounts or log in.
+set -euo pipefail
+usage() { echo 'Usage: az-context-guard --cloud CLOUD [--tenant TENANT-ID] [--subscription SUBSCRIPTION-ID]'; }
+expected_cloud='' expected_tenant='' expected_subscription=''
+while (($#)); do
+  case "$1" in
+    --cloud|--tenant|--subscription)
+      [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || { usage >&2; exit 2; }
+      case "$1" in
+        --cloud) expected_cloud=$2;;
+        --tenant) expected_tenant=$2;;
+        --subscription) expected_subscription=$2;;
+      esac
+      shift;;
+    --help|-h) usage; exit 0;;
+    *) usage >&2; exit 2;;
+  esac
+  shift
+done
+[[ -n "$expected_cloud" ]] || { usage >&2; exit 2; }
+command -v az >/dev/null || { echo 'az-context-guard: az is not installed' >&2; exit 127; }
+actual_cloud=$(az cloud show --query name -o tsv 2>/dev/null) || { echo 'az-context-guard: unable to determine active cloud' >&2; exit 1; }
+[[ "$actual_cloud" == "$expected_cloud" ]] || { echo "az-context-guard: cloud mismatch (expected $expected_cloud, got ${actual_cloud:-none})" >&2; exit 1; }
+actual_tenant=$(az account show --query tenantId -o tsv 2>/dev/null) || { echo 'az-context-guard: no signed-in Azure account' >&2; exit 1; }
+[[ -n "$actual_tenant" && "$actual_tenant" != None ]] || { echo 'az-context-guard: no signed-in tenant' >&2; exit 1; }
+if [[ -n "$expected_tenant" && "$actual_tenant" != "$expected_tenant" ]]; then
+  echo "az-context-guard: tenant mismatch (expected $expected_tenant, got $actual_tenant)" >&2; exit 1
+fi
+if [[ -n "$expected_subscription" ]]; then
+  actual_subscription=$(az account show --query id -o tsv 2>/dev/null) || { echo 'az-context-guard: unable to determine active subscription' >&2; exit 1; }
+  [[ "$actual_subscription" == "$expected_subscription" ]] || { echo "az-context-guard: subscription mismatch (expected $expected_subscription, got ${actual_subscription:-none})" >&2; exit 1; }
+fi
+echo "Azure context OK: cloud=$actual_cloud tenant=$actual_tenant"

@@ -1,6 +1,6 @@
 # dotfiles
 
-Personal configuration and a repeatable development bootstrap for Apple Silicon Macs. The six files in `dotfiles/` are the source of truth. Setup links them into your home directory and never generates or rewrites their contents.
+Personal configuration and a repeatable development bootstrap for Apple Silicon Macs. The six files in `dotfiles/` are the source of truth. Setup links them into your home directory and never generates or rewrites their contents. It also links two Azure helper commands into `~/.local/bin`.
 
 ## Setup
 
@@ -53,6 +53,48 @@ The current personal identity, signing key identifier, `/usr/local/bin/gpg` exec
 
 Homebrew Git remains preferred. Optional Unity, OrbStack, and legacy Claude integration is enabled only when present. Zsh registers existing tool completion directories before initializing completion. Vim creates its persistent undo directory with user-only permissions. System PATH entries are inherited from macOS `path_helper`; local overrides may customize them.
 
+## Azure profiles and context checks
+
+Azure CLI remains an optional package (`--extras`). Profile initialization is a separate explicit operation; neither setup nor shell startup signs you in or initializes profiles automatically. After linking, open a new terminal to load `azinit`, `azuse`, and `azguard` and add `~/.local/bin` to PATH.
+
+```bash
+azinit --all --dry-run
+azinit --all
+# Or initialize only one profile:
+azinit --profile gov
+```
+
+The standalone initializer is `./scripts/initialize_azure_profiles.sh`; the installed command is `~/.local/bin/az-profile-init`. Choose `--all` or one or more `--profile NAME` arguments explicitly.
+
+| Profile | Cloud |
+| --- | --- |
+| `personal` | `AzureCloud` |
+| `government` (`gov`) | `AzureUSGovernment` |
+| `order66` | `AzureCloud` |
+| `ssc` | `AzureCloud` |
+| `polaris` | `AzureCloud` |
+
+Each profile lives in `~/.config/azure-cli-profiles/NAME`. New directories/files use private permissions. Existing matching profiles are preserved; mismatched clouds cause an error requiring manual review. New cloud configuration is staged locally so a failure does not leave a partially initialized destination. Initialization never logs in, selects a subscription, copies credentials, or commits account state. Existing profiles retain their current permissions.
+
+Sign in separately in the current shell:
+
+```bash
+azuse gov
+az login
+azcontext
+azguard --cloud AzureUSGovernment
+```
+
+Use `azguard --cloud CLOUD --tenant TENANT-ID --subscription SUBSCRIPTION-ID` when checking an exact tenant/subscription before an operation. It returns nonzero for missing sign-in, mismatches, missing CLI, or malformed arguments, and never switches accounts or clouds. It checks current local CLI context; it does not refresh or prove that credentials still authorize a subsequent operation. Tenant-only accounts can pass a cloud/tenant check; specify `--subscription` when an operation needs one. `az-context-guard` is also available directly under `~/.local/bin`.
+
+Credentials, token caches, tenant/subscription selection, and the work Git override remain local. The repo contains only cloud mappings and helper code. `AZURE_CONFIG_DIR` is selected by `azuse`; no default profile or cloud is changed in the calling shell by `azinit`. See [Azure CLI cloud management](https://learn.microsoft.com/en-us/cli/azure/manage-clouds-azure-cli).
+
+## Global Git configuration and ignores
+
+`~/.gitconfig` links to the tracked configuration; its `core.excludesfile` selects the tracked `~/.gitignore` symlink. Git reads changes automatically. Configuration covers personal identity and GPG signing, GitHub CLI credential helpers, `main` as the initial branch, rebasing pulls, automatic upstream setup on push, Git LFS filters, moved-line highlighting, line-ending/Unicode handling, the SSCAtlas conditional work include, and the optional final local include.
+
+Global ignores cover macOS metadata/resource forks (`.DS_Store`, `._*`, `.AppleDouble/`, `.LSOverride`), `.dccache`, Xcode user state (`xcuserdata/`, `*.xcuserstate`), hidden Vim swap files (`.*.swp`, `.*.swo`), and `.claude/settings.local.json`. Shared schemes, `.vscode`, `.idea`, source/build-folder names, and environment files are not globally hidden; project-specific build and credential rules belong in each project’s `.gitignore`. Ignore rules do not affect already tracked files and do not replace credential protection. See [Git ignore guidance](https://git-scm.com/docs/gitignore).
+
 ## Local repositories
 
 Clone only repositories you are actively working on, using Git or GitHub CLI. Setup does not enumerate or download repositories. Bulk downloading, `parameters.json`, and the `--repos`, `--parameters`, and `-p` options have been removed to avoid unnecessary local storage use. Existing local checkouts are unaffected.
@@ -68,7 +110,7 @@ Standalone linking commands:
 
 ## Backup and recovery
 
-Correct symlinks are untouched. Conflicting files, directories, and broken symlinks are moved to a unique `~/.dotfiles_backup/run.XXXXXXXX` directory, printed as soon as it is created. If creating a replacement link fails or is interrupted, the pending original is restored when the destination remains empty. Earlier successful links stay in place. Keep the backup path from that run.
+Correct symlinks are untouched. Conflicting dotfiles and helper commands (files, directories, or broken symlinks) are moved to a unique `~/.dotfiles_backup/run.XXXXXXXX` directory, printed as soon as it is created. If creating a replacement link fails or is interrupted, the pending original is restored when the destination remains empty. Earlier successful links stay in place. Keep the backup path from that run. Helper backups retain their `.local/bin/` path inside the backup directory.
 
 To restore a specific original, remove its managed symlink and move the backup back (substitute the printed directory):
 
@@ -87,9 +129,9 @@ For all backed-up entries, first inspect them, then remove only their managed de
 Developer checks require Python 3, Zsh, Vim, and ShellCheck:
 
 ```bash
-for script in install.sh scripts/*.sh; do /bin/bash -n "$script" || exit; done
+for script in install.sh scripts/*.sh scripts/az-context-guard; do /bin/bash -n "$script" || exit; done
 zsh -n dotfiles/.zprofile dotfiles/.zshrc
-shellcheck install.sh scripts/*.sh
+shellcheck install.sh scripts/*.sh scripts/az-context-guard
 git config --file dotfiles/.gitconfig --list >/dev/null
 git diff --check
 python3 -m unittest discover -s tests -v

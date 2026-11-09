@@ -94,6 +94,37 @@ class BootstrapTests(unittest.TestCase):
         self.run_script('scripts/create_links.sh')
         self.assertEqual(len(list((self.home / '.dotfiles_backup').iterdir())), 2)
 
+    def test_helpers_installed_with_backups(self):
+        directory = self.home / '.local/bin'; directory.mkdir(parents=True)
+        (directory / 'az-context-guard').write_text('original guard')
+        self.run_script('scripts/create_links.sh')
+        self.assertEqual((directory / 'az-context-guard').resolve(), (self.repo / 'scripts/az-context-guard').resolve())
+        self.assertEqual((directory / 'az-profile-init').resolve(), (self.repo / 'scripts/initialize_azure_profiles.sh').resolve())
+        backups = list((self.home / '.dotfiles_backup').glob('run.*'))
+        self.assertEqual((backups[0] / '.local/bin/az-context-guard').read_text(), 'original guard')
+        self.run_script('scripts/create_links.sh')
+        self.assertEqual(len(list((self.home / '.dotfiles_backup').iterdir())), 1)
+
+    def test_failed_helper_link_restores_original(self):
+        self.run_script('scripts/create_links.sh')
+        guard = self.home / '.local/bin/az-context-guard'
+        guard.unlink(); guard.write_text('original helper')
+        self.stub('ln')
+        self.run_script('scripts/create_links.sh', expected=1)
+        self.assertEqual(guard.read_text(), 'original helper')
+
+    def test_global_ignores_only_personal_artifacts(self):
+        checkout = self.base / 'ignore-check'; checkout.mkdir()
+        subprocess.run(['/usr/bin/git', 'init', '-q', str(checkout)], env=self.env, check=True)
+        self.run_script('scripts/create_links.sh')
+        ignored = ['.DS_Store', 'nested/._file', '.AppleDouble/file', '.LSOverride', '.dccache',
+                   'app.xcodeproj/xcuserdata/user/state', 'session.xcuserstate', '.file.swp', '.file.swo', '.claude/settings.local.json']
+        visible = ['.vscode/settings.json', '.idea/project.xml', '.env.example', 'bin/source.cs',
+                   'app.xcodeproj/xcshareddata/xcschemes/App.xcscheme']
+        for path in ignored + visible:
+            r = subprocess.run(['/usr/bin/git', '-C', str(checkout), 'check-ignore', '--no-index', '-q', path], env=self.env)
+            self.assertEqual(r.returncode, 0 if path in ignored else 1, path)
+
     def test_failed_link_restores_conflict(self):
         (self.home / '.editorconfig').write_text('restore me')
         self.stub('ln')

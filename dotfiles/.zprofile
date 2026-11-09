@@ -45,6 +45,7 @@ fi
 
 # User-installed tools (high priority)
 path_prepend "/usr/local/bin"
+path_prepend "$HOME/.local/bin"
 
 # =============================================================================
 # DEVELOPMENT TOOLS AND LANGUAGES
