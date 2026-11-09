@@ -50,3 +50,6 @@
 	program = /usr/local/bin/gpg
 [includeIf "gitdir:/Users/ericslutz/Developer/Code/Work/SSCAtlas/**"]
 	path = /Users/ericslutz/.config/git/ssc-atlas.gitconfig
+
+[include]
+    path = ~/.gitconfig.local
