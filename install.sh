@@ -2,33 +2,22 @@
 # Personal Apple Silicon bootstrap. Use --dry-run to inspect without changing state.
 set -euo pipefail
 root=$(cd "$(dirname "$0")" && pwd)
-# shellcheck source=scripts/utilities.sh
-source "$root/scripts/utilities.sh"
-extras=false repos=false links_only=false dry=false interactive=false explicit_parameters=false
-parameters="$root/parameters.json"
+extras=false links_only=false dry=false interactive=false
 usage() {
-  echo 'Usage: ./install.sh [--extras] [--repos] [--links-only] [--dry-run] [--interactive] [--parameters FILE]'
+  echo 'Usage: ./install.sh [--extras] [--links-only] [--dry-run] [--interactive]'
 }
 while (($#)); do
   case "$1" in
     --extras) extras=true;;
-    --repos) repos=true;;
     --links-only) links_only=true;;
     --dry-run) dry=true;;
     --interactive|-i) interactive=true;;
-    --parameters|-p)
-      [[ $# -ge 2 && "$2" != -* ]] || { echo 'Missing parameters file' >&2; exit 2; }
-      parameters=$2; explicit_parameters=true; shift;;
     --help|-h) usage; exit 0;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2;;
   esac
   shift
 done
-if $links_only && { $extras || $repos; }; then echo '--links-only cannot select extras or repos' >&2; exit 2; fi
-if $explicit_parameters || $repos; then
-  [[ -f "$parameters" ]] || { echo "Parameters file not found: $parameters" >&2; exit 2; }
-  if command -v jq >/dev/null; then validate_parameters "$parameters"; fi
-fi
+if $links_only && $extras; then echo '--links-only cannot select extras' >&2; exit 2; fi
 if $dry; then
   if ! $links_only; then
     echo 'Would check Apple Silicon macOS and Command Line Tools; initialize/install Homebrew (installation requires --interactive).'
@@ -36,18 +25,15 @@ if $dry; then
   fi
   "$root/scripts/create_links.sh" --dry-run
   $extras && echo 'Would check/install Brewfile.extras with --no-upgrade; preserve existing VS Code locations.'
-  $repos && echo "Would validate $parameters, authenticate only with --interactive, enumerate and clone missing repositories."
   echo 'Dry run complete; no network requests or mutations.'
   exit 0
 fi
 [[ $(uname -s) == Darwin && $(uname -m) == arm64 ]] || { echo 'Apple Silicon macOS required' >&2; exit 1; }
 [[ $EUID -ne 0 ]] || { echo 'Run as your regular user, not root.' >&2; exit 1; }
-phases=(prerequisites core parameters runtimes links extras repositories)
-states=(blocked blocked skipped blocked blocked skipped skipped)
-if $links_only; then states[0]=skipped; states[1]=skipped; states[3]=skipped; fi
-if $explicit_parameters || $repos; then states[2]=blocked; fi
-$extras && states[5]=blocked
-$repos && states[6]=blocked
+phases=(prerequisites core runtimes links extras)
+states=(blocked blocked blocked blocked skipped)
+if $links_only; then states[0]=skipped; states[1]=skipped; states[2]=skipped; fi
+$extras && states[4]=blocked
 # Homebrew sudo uses askpass when set; fail instead of prompting unless explicitly interactive.
 if ! $interactive; then export SUDO_ASKPASS=/usr/bin/false NONINTERACTIVE=1; fi
 current=-1 runtime_tmp=''
@@ -134,14 +120,8 @@ if ! $links_only; then
   phase 0 prerequisites
   phase 1 bundle "$root/Brewfile"
 fi
-if $explicit_parameters || $repos; then phase 2 validate_parameters "$parameters"; fi
-if ! $links_only; then phase 3 runtimes; fi
-phase 4 "$root/scripts/create_links.sh"
+if ! $links_only; then phase 2 runtimes; fi
+phase 3 "$root/scripts/create_links.sh"
 if [[ ! -x /usr/local/bin/gpg ]]; then echo 'Signing prerequisite unavailable: /usr/local/bin/gpg (GPG Suite). Provision your signing key/YubiKey separately.' >&2; fi
 if [[ ! -r "$HOME/.config/git/ssc-atlas.gitconfig" ]]; then echo 'SSCAtlas Git override is absent; restore it before committing in that work tree.' >&2; fi
-if $extras; then phase 5 install_extras; fi
-if $repos; then
-  repo_args=(--parameters "$parameters")
-  $interactive && repo_args+=(--interactive)
-  phase 6 "$root/scripts/github_repo_downloader.sh" "${repo_args[@]}"
-fi
+if $extras; then phase 4 install_extras; fi

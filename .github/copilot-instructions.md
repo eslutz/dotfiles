@@ -6,7 +6,7 @@
 - Zsh is the default shell (`.zshrc`, `.zprofile`).
 - The main setup script is `install.sh`, which uses strict error handling, and orchestrates setup through modular scripts in `scripts/`.
 - Tracked dotfiles are canonical; never generate or rewrite them during setup.
-- Brewfile defines core packages; Brewfile.extras is explicit opt-in. parameters.json only configures repository downloads.
+- Brewfile defines core packages; Brewfile.extras is explicit opt-in. Setup does not download repositories; clone active projects manually.
 
 ## Coding Conventions
 

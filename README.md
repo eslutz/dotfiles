@@ -16,14 +16,12 @@ Default setup checks prerequisites, installs missing core packages and runtimes,
 | Option | Behavior |
 | --- | --- |
 | `--extras` | Also install the optional package group |
-| `--repos` | Also clone missing repositories using `parameters.json` |
-| `--parameters FILE`, `-p FILE` | Select repository settings; does not enable repository downloads |
-| `--links-only` | Only link dotfiles; incompatible with extras/repos |
+| `--links-only` | Only link dotfiles; incompatible with extras |
 | `--dry-run` | Describe actions without downloads, logins, backups, or modifications |
-| `--interactive`, `-i` | Allow Homebrew installation and GitHub authentication prompts |
+| `--interactive`, `-i` | Allow Homebrew installation and administrator authorization prompts |
 | `--help`, `-h` | Show usage |
 
-Example: `./install.sh --extras --repos --parameters ./parameters.json`. Paths containing spaces or apostrophes are supported when quoted. A dry run cannot establish network access, credentials, package installability, or administrator authorization. When jq is unavailable, schema validation is deferred until core packages are installed; an explicitly supplied file must still exist before setup begins.
+Example: `./install.sh --interactive --extras`. Paths containing spaces or apostrophes are supported when quoted. A dry run cannot establish network access, package installability, or administrator authorization.
 
 Phases report completed, skipped, failed, or blocked. Failure stops subsequent phases; rerun after resolving the reported issue. Interrupt and termination preserve statuses 130 and 143. No package cleanup, blanket upgrade, or application removal is performed.
 
@@ -55,31 +53,15 @@ The current personal identity, signing key identifier, `/usr/local/bin/gpg` exec
 
 Homebrew Git remains preferred. Optional Unity, OrbStack, and legacy Claude integration is enabled only when present. Zsh registers existing tool completion directories before initializing completion. Vim creates its persistent undo directory with user-only permissions. System PATH entries are inherited from macOS `path_helper`; local overrides may customize them.
 
-## Repository downloads
+## Local repositories
 
-`parameters.json` now accepts only:
+Clone only repositories you are actively working on, using Git or GitHub CLI. Setup does not enumerate or download repositories. Bulk downloading, `parameters.json`, and the `--repos`, `--parameters`, and `-p` options have been removed to avoid unnecessary local storage use. Existing local checkouts are unaffected.
 
-```json
-{
-  "github": {
-    "username": "eslutz",
-    "downloadDirectory": "~/Development/github-repos",
-    "includePrivateRepos": true
-  }
-}
-```
-
-All three fields are required. Directory paths must be absolute or start with `~/`. Remove old package, application, template, and enablement keys; validation rejects them with migration guidance. Templates and custom application download scripts have been removed.
-
-Run `gh auth login` before unattended downloads, or select `--interactive`. The downloader enumerates owned repositories through paginated GitHub GraphQL API requests. It includes public repositories and, when selected, private repositories accessible to your account; internal repositories are excluded. It clones missing repositories, preserves existing matching checkouts, and reports conflicting destinations and clone failures. Existing repositories are never pulled, reset, or rewritten. A failed clone can leave a destination that must be inspected before retrying.
-
-Standalone commands:
+Standalone linking commands:
 
 ```bash
 ./scripts/create_links.sh --dry-run
 ./scripts/create_links.sh
-./scripts/github_repo_downloader.sh --parameters ./parameters.json --dry-run
-./scripts/github_repo_downloader.sh --parameters ./parameters.json
 ```
 
 `scripts/cli_initial_setup.sh` is a compatibility entry point to the default bootstrap, including linking. Use `install.sh` for new automation.
@@ -98,11 +80,11 @@ rm "$HOME/.zshrc"
 mv "$backup/.zshrc" "$HOME/.zshrc"
 ```
 
-For all backed-up entries, first inspect them, then remove only their managed destination symlinks and move each original back. Do not use `backup/*`: it excludes hidden dotfiles. Rollback does not uninstall packages or remove downloaded repositories.
+For all backed-up entries, first inspect them, then remove only their managed destination symlinks and move each original back. Do not use `backup/*`: it excludes hidden dotfiles. Rollback does not uninstall packages.
 
 ## Verification
 
-Developer checks require Python 3, jq, Zsh, Vim, and ShellCheck:
+Developer checks require Python 3, Zsh, Vim, and ShellCheck:
 
 ```bash
 for script in install.sh scripts/*.sh; do /bin/bash -n "$script" || exit; done
@@ -113,4 +95,4 @@ git diff --check
 python3 -m unittest discover -s tests -v
 ```
 
-Behavioral tests use temporary checkouts/home directories and fake package/network commands. They exercise repeated linking, rollback, cancellation, phase failures, opt-in actions, argument handling, runtime preservation, pagination, filtering, conflicts, and shell initialization. They do not install software on the host or validate private credentials. A complete fresh installation still needs acceptance on a disposable Apple Silicon Mac; it has not been run against this working Mac.
+Behavioral tests use temporary checkouts/home directories and fake package/network commands. They exercise repeated linking, rollback, cancellation, phase failures, opt-in actions, argument handling, rejection of removed options, runtime preservation, and shell initialization. They do not install software on the host or validate private credentials. A complete fresh installation still needs acceptance on a disposable Apple Silicon Mac; it has not been run against this working Mac.

@@ -1,5 +1,4 @@
 """Isolated bootstrap tests. All install/network commands are replaced by fixtures."""
-import json
 import os
 from pathlib import Path
 import shutil
@@ -25,21 +24,8 @@ elif name == 'brew':
         pathlib.Path(os.environ['TEST_LOG'] + '.installed').touch()
         sys.exit(int(os.getenv('TEST_BUNDLE_FAIL', '0')))
     elif args and args[0] == 'list': sys.exit(1)
-elif name == 'gh':
-    if args[:2] == ['auth', 'status']: sys.exit(int(os.getenv('TEST_AUTH_FAIL', '0')))
-    elif args[:2] == ['api', 'graphql']:
-        if os.getenv('TEST_API_FAIL'): sys.exit(1)
-        pages = json.loads(pathlib.Path(os.environ['TEST_PAGES']).read_text())
-        page = 1 if 'cursor=next-page' in args else 0
-        print(json.dumps(pages[page]))
-    elif args[:2] == ['repo', 'clone']:
-        if args[2].endswith('/broken'): sys.exit(1)
-        p = pathlib.Path(args[3]); (p / '.git').mkdir(parents=True)
-        (p / 'origin.txt').write_text('https://github.com/' + args[2] + '.git')
-elif name == 'git':
-    p = pathlib.Path(args[1]) / 'origin.txt'
-    if not p.exists(): sys.exit(1)
-    print(p.read_text())
+elif name in ('gh', 'git'):
+    sys.exit('Unexpected repository command during bootstrap')
 elif name == 'ln':
     if os.getenv('TEST_LINK_CANCEL'): os.kill(os.getppid(), signal.SIGTERM)
     sys.exit(1)
@@ -47,12 +33,6 @@ elif name == 'curl':
     if os.getenv('TEST_CURL_FAIL'): sys.exit(1)
     pathlib.Path(args[args.index('-o') + 1]).write_text('#!/bin/bash\nexit 0\n')
 '''
-
-
-def page(names, more=False):
-    return {'data': {'repositoryOwner': {'repositories': {
-        'nodes': [{'name': n, 'nameWithOwner': 'fixture/' + n, 'visibility': v} for n, v in names],
-        'pageInfo': {'hasNextPage': more, 'endCursor': 'next-page' if more else None}}}}}
 
 
 class BootstrapTests(unittest.TestCase):
@@ -66,32 +46,23 @@ class BootstrapTests(unittest.TestCase):
         self.home.mkdir()
         self.bin = self.base / 'bin'; self.bin.mkdir()
         self.log = self.base / 'calls'
-        self.pages = self.base / 'pages.json'
-        self.pages.write_text(json.dumps([page([('public', 'PUBLIC'), ('private', 'PRIVATE')])]))
         self.prefix = self.base / 'prefix'
         nvm = self.prefix / 'opt/nvm/nvm.sh'; nvm.parent.mkdir(parents=True)
         nvm.write_text('nvm() { echo "nvm:$*" >> "$TEST_LOG"; if [[ $1 == version ]]; then echo v22.0.0; fi; }\n')
         self.env = dict(os.environ, HOME=str(self.home), PATH=str(self.bin) + ':/usr/bin:/bin:/usr/sbin:/sbin',
-                        TEST_LOG=str(self.log), TEST_PREFIX=str(self.prefix), TEST_PAGES=str(self.pages))
+                        TEST_LOG=str(self.log), TEST_PREFIX=str(self.prefix))
         self.env.pop('NVM_DIR', None)
         self.env['DOTNET_ROOT'] = str(self.base / 'dotnet-root')
         for name in ['uname', 'xcode-select', 'brew', 'gh', 'git', 'node', 'dotnet', 'curl']:
             self.stub(name)
-        # Keep tools under test independent of the actual Homebrew installation.
-        shutil.copy2(shutil.which('jq'), self.bin / 'jq')
         # Fixtures explicitly replace the fixed production Homebrew entry point.
         install = self.repo / 'install.sh'
         install.write_text(install.read_text().replace('/opt/homebrew/bin/brew', str(self.bin / 'brew')).replace("'/Applications/", "'" + str(self.base / 'Applications') + '/'))
-        self.params = self.base / 'parameters.json'
-        self.write_params()
 
     def stub(self, name):
         p = self.bin / name
         p.write_text(STUB.replace('#!/usr/bin/env python3', '#!' + shutil.which('python3')))
         p.chmod(0o755)
-
-    def write_params(self, private=True):
-        self.params.write_text(json.dumps({'github': {'username': 'fixture', 'downloadDirectory': '~/repos', 'includePrivateRepos': private}}))
 
     def run_script(self, script='install.sh', *args, expected=0):
         result = subprocess.run(['/bin/bash', str(self.repo / script), *args], env=self.env,
@@ -102,9 +73,6 @@ class BootstrapTests(unittest.TestCase):
     def calls(self):
         return self.log.read_text() if self.log.exists() else ''
 
-    def downloader(self, *args, expected=0):
-        return self.run_script('scripts/github_repo_downloader.sh', '--parameters', str(self.params), *args, expected=expected)
-
     def test_default_core_only_and_tracked_config_unchanged(self):
         before = {p.name: p.read_bytes() for p in (self.repo / 'dotfiles').iterdir()}
         r = self.run_script()
@@ -112,6 +80,7 @@ class BootstrapTests(unittest.TestCase):
         self.assertIn('extras: skipped', r.stdout)
         self.assertNotIn('Brewfile.extras', self.calls())
         self.assertNotIn('"gh"', self.calls())
+        self.assertNotIn('"git"', self.calls())
         self.assertEqual(before, {p.name: p.read_bytes() for p in (self.repo / 'dotfiles').iterdir()})
 
     def test_links_idempotence_and_unique_backups(self):
@@ -144,26 +113,15 @@ class BootstrapTests(unittest.TestCase):
         self.assertFalse((self.home / '.dotfiles_backup').exists())
 
     def test_dry_run_has_no_calls_or_home_changes(self):
-        self.run_script('install.sh', '--dry-run', '--extras', '--repos', '--parameters', str(self.params))
-        # jq validation is read-only and not a stubbed install/network command.
+        self.run_script('install.sh', '--dry-run', '--extras')
         self.assertEqual(self.calls(), '')
         self.assertEqual(list(self.home.iterdir()), [])
-        self.downloader('--dry-run')
-        self.assertEqual(self.calls(), '')
-
-    def test_parameters_alone_do_not_enable_repos(self):
-        self.run_script('install.sh', '--parameters', str(self.params))
-        self.assertNotIn('"gh"', self.calls())
-
-    def test_invalid_and_missing_parameters_rejected_before_setup(self):
-        self.params.write_text('{"brew": {}}')
-        self.run_script('install.sh', '--parameters', str(self.params), expected=2)
-        self.assertEqual(self.calls(), '')
-        self.run_script('install.sh', '--parameters', '/missing', expected=2)
 
     def test_arguments(self):
-        for args in [('--wat',), ('--parameters',), ('--links-only', '--extras'), ('unexpected',)]:
+        for args in [('--wat',), ('--repos',), ('--parameters',), ('--parameters', 'old.json'), ('-p', 'old.json'), ('--dry-run', '--repos'), ('--links-only', '--extras'), ('unexpected',)]:
             self.run_script('install.sh', *args, expected=2)
+            self.assertEqual(self.calls(), '')
+            self.assertEqual(list(self.home.iterdir()), [])
         self.run_script('install.sh', '--help')
 
     def test_links_only_skips_prerequisites(self):
@@ -234,45 +192,6 @@ class BootstrapTests(unittest.TestCase):
         self.run_script(expected=1)
         self.assertNotIn('"curl"', self.calls())
 
-    def test_repo_pagination_and_private_filter(self):
-        self.write_params(private=False)
-        self.pages.write_text(json.dumps([page([('public', 'PUBLIC'), ('private', 'PRIVATE')], True), page([('second', 'PUBLIC')])]))
-        self.downloader()
-        self.assertIn('cursor=next-page', self.calls())
-        self.assertTrue((self.home / 'repos/second/.git').exists())
-        self.assertFalse((self.home / 'repos/private').exists())
-
-    def test_existing_checkout_and_conflict(self):
-        self.downloader()
-        marker = self.home / 'repos/public/uncommitted'; marker.write_text('preserve')
-        self.log.write_text('')
-        self.downloader()
-        self.assertNotIn('"clone"', self.calls())
-        self.assertEqual(marker.read_text(), 'preserve')
-        (self.home / 'repos/private/origin.txt').write_text('https://github.com/someone/else.git')
-        self.downloader(expected=1)
-
-    def test_clone_failure_aggregates_and_continues(self):
-        self.pages.write_text(json.dumps([page([('broken', 'PUBLIC'), ('working', 'PUBLIC')])]))
-        self.downloader(expected=1)
-        self.assertTrue((self.home / 'repos/working/.git').exists())
-
-    def test_auth_explicit_interactive_only(self):
-        self.env['TEST_AUTH_FAIL'] = '1'
-        self.downloader(expected=1)
-        self.assertNotIn('"login"', self.calls())
-        self.downloader('--interactive')
-        self.assertIn('"login"', self.calls())
-
-    def test_api_failure_does_not_create_destination(self):
-        self.env['TEST_API_FAIL'] = '1'
-        self.downloader(expected=1)
-        self.assertFalse((self.home / 'repos').exists())
-
-    def test_empty_repositories(self):
-        self.pages.write_text(json.dumps([page([])]))
-        self.downloader()
-
     def test_shell_integrations_and_repeated_sourcing(self):
         for present in [False, True]:
             if present:
@@ -323,11 +242,6 @@ _dotnet_zsh_complete
                                 env=self.env, capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), 'fixture@example.invalid')
-
-    def test_missing_dependency(self):
-        (self.bin / 'gh').unlink()
-        result = self.downloader(expected=1)
-        self.assertIn('Required command missing: gh', result.stderr)
 
 
 if __name__ == '__main__':
