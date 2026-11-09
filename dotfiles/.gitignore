@@ -13,3 +13,13 @@
 
 # Machine-local Claude permissions/settings
 **/.claude/settings.local.json
+
+# Personal Claude instructions and file-based Claude/Codex credentials
+CLAUDE.local.md
+**/.claude/.credentials.json
+**/.codex/auth.json
+
+# Local environment values; example/sample/template files remain trackable
+.env
+.env.local
+.env.*.local

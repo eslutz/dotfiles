@@ -118,9 +118,16 @@ class BootstrapTests(unittest.TestCase):
         subprocess.run(['/usr/bin/git', 'init', '-q', str(checkout)], env=self.env, check=True)
         self.run_script('scripts/create_links.sh')
         ignored = ['.DS_Store', 'nested/._file', '.AppleDouble/file', '.LSOverride', '.dccache',
-                   '.file.swp', '.file.swo', '.claude/settings.local.json']
+                   '.file.swp', '.file.swo', '.claude/settings.local.json',
+                   'nested/.claude/settings.local.json', 'CLAUDE.local.md', 'nested/CLAUDE.local.md',
+                   '.claude/.credentials.json', 'nested/.claude/.credentials.json',
+                   '.codex/auth.json', 'nested/.codex/auth.json',
+                   '.env', '.env.local', '.env.development.local', 'nested/.env', 'nested/.env.production.local']
         visible = ['app.xcodeproj/xcuserdata/user/state', 'session.xcuserstate', '.vscode/settings.json', '.idea/project.xml', '.env.example', 'bin/source.cs',
-                   'app.xcodeproj/xcshareddata/xcschemes/App.xcscheme']
+                   'app.xcodeproj/xcshareddata/xcschemes/App.xcscheme',
+                   '.env.sample', '.env.template', 'nested/.env.example', 'nested/.env.sample',
+                   'CLAUDE.md', 'AGENTS.md', 'AGENTS.override.md', '.claude/settings.json',
+                   '.codex/config.toml', '.agents/skills/example/SKILL.md', 'public.pem', 'fixture.key']
         for path in ignored + visible:
             r = subprocess.run(['/usr/bin/git', '-C', str(checkout), 'check-ignore', '--no-index', '-q', path], env=self.env)
             self.assertEqual(r.returncode, 0 if path in ignored else 1, path)
