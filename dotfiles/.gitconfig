@@ -34,7 +34,7 @@
 
 # Pull strategy configuration
 [pull]
-    rebase = false  # Use merge strategy for pulls (create merge commits)
+	rebase = true
 
 # Push behavior configuration
 [push]
@@ -46,3 +46,7 @@
     smudge = git-lfs smudge -- %f     # Smudge filter for LFS files
     process = git-lfs filter-process  # Process filter for LFS files
     required = true                   # Make LFS required for this repository
+[gpg]
+	program = /usr/local/bin/gpg
+[includeIf "gitdir:/Users/ericslutz/Developer/Code/Work/SSCAtlas/**"]
+	path = /Users/ericslutz/.config/git/ssc-atlas.gitconfig
